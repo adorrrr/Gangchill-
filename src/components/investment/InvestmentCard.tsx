@@ -20,6 +20,9 @@ export const InvestmentCard: React.FC<InvestmentCardProps> = ({
   );
 
   const isOpen = opportunity.status === 'open';
+  const imageSrc = (opportunity.images && opportunity.images.length > 0 && opportunity.images[0])
+    ? opportunity.images[0]
+    : ((opportunity as any).image || '/hero-fishermen-boat.png');
 
   return (
     <div
@@ -28,10 +31,13 @@ export const InvestmentCard: React.FC<InvestmentCardProps> = ({
       {/* 1. Image Header with Overlaid Badges */}
       <div className="relative aspect-[16/10] bg-gangchill-canvas overflow-hidden shrink-0">
         <img
-          src={opportunity.images[0]}
+          src={imageSrc}
           alt={opportunity.title}
           className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           loading="lazy"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/hero-fishermen-boat.png';
+          }}
         />
 
         {/* Gradient for badge contrast */}

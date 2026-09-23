@@ -32,13 +32,13 @@ export const BackButton: React.FC<BackButtonProps> = ({
     <button
       onClick={handleBack}
       className={`
-        inline-flex items-center gap-2 py-2 px-3 -ml-3 text-gangchill-ink/80 hover:text-gangchill-green
+        inline-flex items-center gap-2 py-2 px-3 -ml-3 text-gangchill-ink/80 hover:text-gangchill-blue
         font-semibold text-sm sm:text-base rounded-md hover:bg-black/5 transition-colors duration-150 active:scale-[0.98]
         ${className}
       `}
       aria-label={label}
     >
-      <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gangchill-green" />
+      <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gangchill-blue" />
       <span>{label}</span>
     </button>
   );

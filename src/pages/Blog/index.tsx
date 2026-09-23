@@ -16,18 +16,35 @@ export const BlogPage: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('সব');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = useMemo(() => ['সব', ...blogService.getCategories()], []);
+  const categories = useMemo(() => {
+    const rawCategories = Array.from(new Set(posts.map((p) => p.category).filter(Boolean)));
+    return ['সব', ...rawCategories];
+  }, [posts]);
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      blogService.getPosts({ category: activeCategory, query: searchQuery }),
-      blogService.getFeaturedPost(),
-    ]).then(([allPosts, featured]) => {
-      setPosts(allPosts);
-      setFeaturedPost(featured);
-      setLoading(false);
-    });
+    const refreshData = () => {
+      setLoading(true);
+      Promise.all([
+        blogService.getPosts({ category: activeCategory, query: searchQuery }),
+        blogService.getFeaturedPost(),
+      ]).then(([allPosts, featured]) => {
+        setPosts(allPosts);
+        setFeaturedPost(featured);
+        setLoading(false);
+      }).catch(() => {
+        setLoading(false);
+      });
+    };
+
+    refreshData();
+
+    const onUpdate = () => refreshData();
+    window.addEventListener('gangchill_blog_updated', onUpdate);
+    window.addEventListener('focus', onUpdate);
+    return () => {
+      window.removeEventListener('gangchill_blog_updated', onUpdate);
+      window.removeEventListener('focus', onUpdate);
+    };
   }, [activeCategory, searchQuery]);
 
   const gridPosts = posts.filter((post) => post.slug !== featuredPost?.slug || activeCategory !== 'সব' || searchQuery.trim() !== '');
@@ -54,9 +71,10 @@ export const BlogPage: React.FC = () => {
   return (
     <div className="bg-gangchill-canvas text-gangchill-ink min-h-screen">
       <Seo
-        title="Gangchill | পাইকারি মাছের বাণিজ্যিক প্ল্যাটফর্ম"
+        title="মৎস্য বাণিজ্য ব্লগ ও নলেজবেস | Gangchill (গাংচিল)"
         description="গাংচিলের মাছ সরবরাহ চেইন, কোল্ড-চেইন লজিস্টিক্স, পাইকারি ক্রয়-বিক্রয় ও বাংলাদেশের মৎস্য বাণিজ্য নিয়ে বিশ্বাসযোগ্য গল্প ও ব্যবহারিক অন্তর্দৃষ্টি পড়ুন।"
         path="/blog"
+        keywords={['মৎস্য ব্লগ', 'মাছের ব্যবসা', 'কোল্ডচেইন লজিস্টিকস', 'ইলিশ মৌসুম', 'মাছ সংগ্রহ', 'Gangchill']}
         structuredData={structuredData}
       />
 

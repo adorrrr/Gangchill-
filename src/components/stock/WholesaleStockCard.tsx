@@ -11,13 +11,14 @@ interface WholesaleStockCardProps {
 
 export const WholesaleStockCard: React.FC<WholesaleStockCardProps> = ({ stock }) => {
   const isLive = stock.status === 'live';
+  const imageSrc = stock.images && stock.images.length > 0 && stock.images[0] ? stock.images[0] : '/hero-fishermen-boat.png';
 
   return (
     <div className="group relative flex flex-col bg-white/85 backdrop-blur-xl rounded-[24px] sm:rounded-[26px] border border-white/80 shadow-glass hover:shadow-glass-glow hover:border-cyan-400/40 transition-all duration-300 overflow-hidden">
       {/* 1. Photo Header with Overlaid Maritime Badges */}
       <div className="relative aspect-[16/10] overflow-hidden bg-gangchill-surface shrink-0">
         <img
-          src={stock.images[0]}
+          src={imageSrc}
           alt={stock.banglaName}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"

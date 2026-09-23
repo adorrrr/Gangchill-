@@ -16,13 +16,14 @@ export const UpcomingStockCard: React.FC<UpcomingStockCardProps> = ({ stock, ind
 
   // Extract booking quota approximation for visual feedback
   const bookedPercent = index % 2 === 0 ? 75 : 60;
+  const imageSrc = stock.images && stock.images.length > 0 && stock.images[0] ? stock.images[0] : '/hero-fishermen-boat.png';
 
   return (
     <div className="group relative bg-white/85 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] border border-white/80 shadow-glass hover:shadow-glass-glow hover:border-cyan-400/40 transition-all duration-300 overflow-hidden flex flex-col">
       {/* 1. Header Image & Maritime Badges */}
       <div className="relative aspect-[16/9] sm:aspect-[16/8] overflow-hidden bg-gangchill-surface">
         <img
-          src={stock.images[0]}
+          src={imageSrc}
           alt={stock.banglaName}
           className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
           loading="lazy"

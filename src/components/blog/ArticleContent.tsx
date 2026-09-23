@@ -12,6 +12,19 @@ interface ArticleContentProps {
  * heading hierarchy (h2) and semantic markup for SEO and accessibility.
  */
 export const ArticleContent: React.FC<ArticleContentProps> = ({ blocks }) => {
+  if (!blocks || !Array.isArray(blocks)) {
+    if (typeof blocks === 'string') {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm sm:text-base text-gangchill-ink/85 leading-relaxed sm:leading-[1.9] font-light">
+            {blocks}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }
+
   return (
     <div className="space-y-5">
       {blocks.map((block, idx) => {

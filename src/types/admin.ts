@@ -7,6 +7,7 @@ export interface AdminUser {
   name: string;
   email: string;
   role: AdminRole;
+  designation?: string;
   avatar?: string;
   phone?: string;
   lastLogin?: string;
@@ -49,6 +50,9 @@ export interface SellerLot extends FarmerStockSubmission {
   inspectionNotes?: string;
   approvedWholesalePrice?: number;
   convertedStockId?: string;
+  stockDeletedAt?: string;
+  stockDeletedName?: string;
+  isStockDeleted?: boolean;
 }
 
 export interface DashboardMetrics {
@@ -77,8 +81,11 @@ export interface ActivityLogItem {
 
 export interface PlatformSettings {
   platformName: string;
+  tagline?: string;
   supportPhone: string;
   supportEmail: string;
+  emergencyHotline?: string;
+  businessHours?: string;
   headOfficeAddress: string;
   hubLocations: string;
   defaultMoqKg: number;
@@ -86,4 +93,40 @@ export interface PlatformSettings {
   allowPublicSellerSubmissions: boolean;
   allowPublicInvestorInterest: boolean;
   maintenanceMode: boolean;
+  maintenanceMessage?: string;
+  notifyOnNewOrder?: boolean;
+  notifyOnNewLot?: boolean;
+  notifyOnNewInvestmentInterest?: boolean;
 }
+
+export interface CustomerProfile {
+  id: string;
+  companyName: string;
+  businessType: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  deliveryLocation: string;
+  tier: 'VIP' | 'Regular' | 'New';
+  totalOrdersCount: number;
+  totalVolumeKg: number;
+  totalOrderValue: number;
+  lastOrderDate: string;
+  preferredFish: string[];
+}
+
+export interface SupplierProfile {
+  id: string;
+  farmerName: string;
+  type: 'জেলে সমবায়' | 'ঘের মালিক' | 'ট্রলার কনসোর্টিয়াম' | 'স্বতন্ত্র মাছ চাষী';
+  phone: string;
+  district: string;
+  location: string;
+  verificationBadge: 'verified' | 'provisional' | 'new';
+  totalLotsCount: number;
+  totalVolumeKg: number;
+  qualityRating: number;
+  primarySpecies: string[];
+  joinedDate: string;
+}
+

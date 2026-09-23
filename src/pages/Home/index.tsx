@@ -6,6 +6,9 @@ import { Stock } from '../../types/stock';
 import { FeaturedStockCarousel } from '../../components/stock/FeaturedStockCarousel';
 import { UpcomingStockCard } from '../../components/stock/UpcomingStockCard';
 import { HeroWaterRipple } from '../../components/effects/HeroWaterRipple';
+import { Seo, SEO_SITE_NAME, SEO_SITE_URL } from '../../components/seo/Seo';
+import { COMPANY_CONTACT } from '../../config/constants';
+import { adminService } from '../../services/adminService';
 import {
   ChevronDown,
   ArrowRight,
@@ -13,21 +16,58 @@ import {
   Truck,
   ShieldCheck,
   PhoneCall,
-  CheckCircle2
+  CheckCircle2,
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
+  const [platformSettings, setPlatformSettings] = useState(() => adminService.getSettings());
   const [liveStocks, setLiveStocks] = useState<Stock[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [upcomingStocks, setUpcomingStocks] = useState<Stock[]>([]);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    stockService.getLiveStocks(4).then((res) => {
-      setLiveStocks(res);
-      setLoadingFeatured(false);
-    });
-    stockService.getUpcomingStocks(2).then(setUpcomingStocks);
+    adminService.fetchSettings().then((s) => {
+      if (s) setPlatformSettings(s);
+    }).catch(() => {});
+
+    const syncSettings = () => {
+      setPlatformSettings(adminService.getSettings());
+    };
+    window.addEventListener('gangchill_settings_updated', syncSettings);
+    window.addEventListener('storage', syncSettings);
+    return () => {
+      window.removeEventListener('gangchill_settings_updated', syncSettings);
+      window.removeEventListener('storage', syncSettings);
+    };
+  }, []);
+
+  const isMaintenanceMode = Boolean(platformSettings?.maintenanceMode);
+
+  useEffect(() => {
+    const fetchStocks = () => {
+      stockService.getLiveStocks(12).then((res) => {
+        setLiveStocks(res);
+        setLoadingFeatured(false);
+      });
+      stockService.getUpcomingStocks(4).then(setUpcomingStocks);
+    };
+
+    fetchStocks();
+
+    const handleUpdate = () => {
+      fetchStocks();
+    };
+
+    window.addEventListener('gangchill_stocks_updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+
+    return () => {
+      window.removeEventListener('gangchill_stocks_updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+    };
   }, []);
 
   const faqs = [
@@ -65,8 +105,43 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  const homeStructuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: SEO_SITE_NAME,
+      url: SEO_SITE_URL,
+      description: 'গাংচিল — পাইকারি মাছ ও সামুদ্রিক খাদ্যের জন্য একটি নির্ভরযোগ্য B2B/B2C বাণিজ্যিক প্ল্যাটফর্ম।',
+      inLanguage: 'bn-BD',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Gangchill',
+      alternateName: 'গাংচিল',
+      url: SEO_SITE_URL,
+      logo: `${SEO_SITE_URL}/gangchill-logo-navbar.png`,
+      email: COMPANY_CONTACT.email,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: COMPANY_CONTACT.hotlineTel,
+        contactType: 'customer service',
+        areaServed: 'BD',
+        availableLanguage: ['Bengali', 'English'],
+      },
+    },
+  ];
+
   return (
     <div className="bg-gangchill-canvas text-gangchill-ink min-h-screen selection:bg-gangchill-blue/15 selection:text-gangchill-blue">
+      <Seo
+        title="Gangchill (গাংচিল) — পাইকারি মাছের বাণিজ্যিক প্ল্যাটফর্ম"
+        description="গাংচিল — পাইকারি মাছ ও সামুদ্রিক খাদ্যের জন্য একটি নির্ভরযোগ্য B2B/B2C বাণিজ্যিক প্ল্যাটফর্ম। সরাসরি ঘাট ও ঘের থেকে তাজা মাছ কিনুন, বিক্রি করুন এবং মৎস্য প্রকল্পে বিনিয়োগ করুন।"
+        path="/"
+        keywords={['গাংচিল', 'পাইকারি মাছ', 'মাছের বাজার', 'ইলিশ মাছ', 'চিংড়ি', 'কোল্ডচেইন লজিস্টিকস', 'মৎস্য বিনিয়োগ', 'Gangchill']}
+        structuredData={homeStructuredData}
+      />
+
       {/* 1. HERO SECTION — Full Size Canvas Background Image with Interactive Click-Water Ripple */}
       <section className="relative w-full min-h-[85vh] lg:min-h-[90vh] flex flex-col justify-between pt-12 sm:pt-16 pb-12 border-b border-gangchill-ink/8 overflow-hidden">
         {/* Full Canvas Background Image with Click-Triggered Water Surface Effect */}
@@ -98,11 +173,18 @@ export const HomePage: React.FC = () => {
         <div className="relative z-10 my-auto">
           <Container>
             <div className="max-w-2xl space-y-6 text-left">
-              {/* Top Subtitle */}
-              <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-bangla text-gangchill-blue font-semibold bg-white/80 backdrop-blur-md px-2.5 sm:px-3 py-1 rounded-full border border-blue-900/10 shadow-2xs whitespace-nowrap max-w-full">
-                <span className="w-2 h-2 rounded-full bg-gangchill-blue animate-pulse shrink-0" />
-                <span className="truncate">বাংলাদেশের মাছের বাণিজ্যের নতুন সংযোগ</span>
-              </div>
+              {/* Top Subtitle or Maintenance Pill */}
+              {isMaintenanceMode ? (
+                <div className="inline-flex items-center gap-2 text-xs font-bangla text-rose-800 font-bold bg-rose-100/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-rose-300 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping shrink-0" />
+                  <span>🔧 সাময়িক রক্ষণাবেক্ষণ চলছে</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-bangla text-gangchill-blue font-semibold bg-white/80 backdrop-blur-md px-2.5 sm:px-3 py-1 rounded-full border border-blue-900/10 shadow-2xs whitespace-nowrap max-w-full">
+                  <span className="w-2 h-2 rounded-full bg-gangchill-blue animate-pulse shrink-0" />
+                  <span className="truncate">বাংলাদেশের মাছের বাণিজ্যের নতুন সংযোগ</span>
+                </div>
+              )}
 
               {/* Large Confident Bangla Headline */}
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold font-serifBangla text-gangchill-ink leading-[1.18] sm:leading-[1.12] tracking-tight">
@@ -110,64 +192,213 @@ export const HomePage: React.FC = () => {
                 সরাসরি সংযোগ।
               </h1>
 
-              {/* Supporting Copy */}
-              <p className="text-sm sm:text-lg text-gangchill-ink/80 leading-relaxed font-normal max-w-xl">
-                দেশি মাছ, চিংড়ি, ইলিশ ও শুঁটকি—<br className="hidden sm:inline" />
-                উৎস ঘাট ও ঘের থেকে পাইকারি ক্রেতা পর্যন্ত সহজ, স্বচ্ছ ও বিশ্বস্ত প্ল্যাটফর্ম।
-              </p>
+              {/* Supporting Copy or Short Maintenance Notice */}
+              {isMaintenanceMode ? (
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-50/95 border border-rose-200 text-rose-950 max-w-xl shadow-xs space-y-1 animate-fade-in">
+                  <p className="text-xs sm:text-sm font-semibold font-bangla leading-relaxed flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>
+                      {platformSettings?.maintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের জন্য আমাদের ক্রয়-বিক্রয় কার্যক্রম বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।'}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm sm:text-lg text-gangchill-ink/80 leading-relaxed font-normal max-w-xl">
+                  দেশি মাছ, চিংড়ি, ইলিশ ও শুঁটকি—<br className="hidden sm:inline" />
+                  উৎস ঘাট ও ঘের থেকে পাইকারি ক্রেতা পর্যন্ত সহজ, স্বচ্ছ ও বিশ্বস্ত প্ল্যাটফর্ম।
+                </p>
+              )}
 
-              {/* 2 Core Action Cards — Liquid Glassmorphism UI */}
-              <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 max-w-xl">
+              {/* 3 Core Action Cards — Active or Locked Red States */}
+              <div className="pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5 max-w-2xl">
                 {/* 1. কিনুন */}
                 <Link
-                  to="/buy"
-                  className="group relative overflow-hidden p-4 sm:p-5 rounded-2xl backdrop-blur-xl bg-white/75 hover:bg-white/90 active:scale-[0.98] border border-white/90 hover:border-blue-400/40 shadow-glass hover:shadow-glass-glow transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between"
+                  to={isMaintenanceMode ? '#' : '/buy'}
+                  onClick={(e) => {
+                    if (isMaintenanceMode) e.preventDefault();
+                  }}
+                  aria-disabled={isMaintenanceMode}
+                  className={`group relative overflow-hidden p-4 rounded-2xl transition-all duration-300 transform flex flex-col justify-between ${
+                    isMaintenanceMode
+                      ? 'bg-rose-600 text-white border border-rose-500 shadow-md cursor-not-allowed opacity-95'
+                      : 'backdrop-blur-xl bg-white/75 hover:bg-white/90 active:scale-[0.98] border border-white/90 hover:border-blue-400/40 shadow-glass hover:shadow-glass-glow hover:-translate-y-1'
+                  }`}
                 >
-                  {/* Liquid specular reflection highlights */}
-                  <div className="absolute -top-12 -right-12 w-28 h-28 rounded-full bg-gradient-to-br from-white/90 via-cyan-300/20 to-transparent blur-md pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/10 opacity-70 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  {!isMaintenanceMode && (
+                    <>
+                      <div className="absolute -top-12 -right-12 w-28 h-28 rounded-full bg-gradient-to-br from-white/90 via-cyan-300/20 to-transparent blur-md pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/10 opacity-70 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    </>
+                  )}
 
                   <div className="relative z-10 flex items-center justify-between mb-3">
-                    <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-gangchill-blue/10 border border-gangchill-blue/20 text-gangchill-blue shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xs">
-                      ০১
+                    <span
+                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                        isMaintenanceMode
+                          ? 'bg-rose-800/60 text-white border border-rose-400/40'
+                          : 'bg-gangchill-blue/10 border border-gangchill-blue/20 text-gangchill-blue shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]'
+                      }`}
+                    >
+                      {isMaintenanceMode ? '🔒 স্থগিত' : '০১'}
                     </span>
-                    <div className="w-7 h-7 rounded-full bg-gangchill-blue/10 text-gangchill-blue group-hover:bg-gangchill-blue group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs">
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs ${
+                        isMaintenanceMode
+                          ? 'bg-rose-700 text-white'
+                          : 'bg-gangchill-blue/10 text-gangchill-blue group-hover:bg-gangchill-blue group-hover:text-white'
+                      }`}
+                    >
+                      {isMaintenanceMode ? (
+                        <Lock className="w-3.5 h-3.5 text-white" />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      )}
                     </div>
                   </div>
                   <div className="relative z-10">
-                    <div className="text-lg font-bold font-serifBangla text-gangchill-ink group-hover:text-gangchill-blue transition-colors">
-                      কিনুন
+                    <div
+                      className={`text-base sm:text-lg font-bold font-serifBangla ${
+                        isMaintenanceMode
+                          ? 'text-white'
+                          : 'text-gangchill-ink group-hover:text-gangchill-blue transition-colors'
+                      }`}
+                    >
+                      {isMaintenanceMode ? '🔒 কিনুন — বর্তমানে বন্ধ' : 'কিনুন'}
                     </div>
-                    <div className="text-xs text-gangchill-ink-muted mt-0.5 font-medium">
-                      পাইকারি মাছের লাইভ স্টক
+                    <div
+                      className={`text-xs mt-0.5 font-medium ${
+                        isMaintenanceMode ? 'text-rose-100' : 'text-gangchill-ink-muted'
+                      }`}
+                    >
+                      {isMaintenanceMode ? 'সাময়িক রক্ষণাবেক্ষণের কাজ চলছে' : 'পাইকারি মাছের লাইভ স্টক'}
                     </div>
                   </div>
                 </Link>
 
                 {/* 2. বিক্রি করুন */}
                 <Link
-                  to="/sell"
-                  className="group relative overflow-hidden p-4 sm:p-5 rounded-2xl backdrop-blur-xl bg-white/75 hover:bg-white/90 active:scale-[0.98] border border-white/90 hover:border-cyan-400/40 shadow-glass hover:shadow-glass-glow transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between"
+                  to={isMaintenanceMode ? '#' : '/sell'}
+                  onClick={(e) => {
+                    if (isMaintenanceMode) e.preventDefault();
+                  }}
+                  aria-disabled={isMaintenanceMode}
+                  className={`group relative overflow-hidden p-4 rounded-2xl transition-all duration-300 transform flex flex-col justify-between ${
+                    isMaintenanceMode
+                      ? 'bg-rose-600 text-white border border-rose-500 shadow-md cursor-not-allowed opacity-95'
+                      : 'backdrop-blur-xl bg-white/75 hover:bg-white/90 active:scale-[0.98] border border-white/90 hover:border-cyan-400/40 shadow-glass hover:shadow-glass-glow hover:-translate-y-1'
+                  }`}
                 >
-                  {/* Liquid specular reflection highlights */}
-                  <div className="absolute -top-12 -right-12 w-28 h-28 rounded-full bg-gradient-to-br from-white/90 via-cyan-400/25 to-transparent blur-md pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/10 opacity-70 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  {!isMaintenanceMode && (
+                    <>
+                      <div className="absolute -top-12 -right-12 w-28 h-28 rounded-full bg-gradient-to-br from-white/90 via-cyan-400/25 to-transparent blur-md pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/10 opacity-70 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    </>
+                  )}
 
                   <div className="relative z-10 flex items-center justify-between mb-3">
-                    <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-gangchill-cyan/10 border border-gangchill-cyan/20 text-gangchill-cyan-deep shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xs">
-                      ০২
+                    <span
+                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                        isMaintenanceMode
+                          ? 'bg-rose-800/60 text-white border border-rose-400/40'
+                          : 'bg-gangchill-cyan/10 border border-gangchill-cyan/20 text-gangchill-cyan-deep shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]'
+                      }`}
+                    >
+                      {isMaintenanceMode ? '🔒 স্থগিত' : '০২'}
                     </span>
-                    <div className="w-7 h-7 rounded-full bg-gangchill-cyan/10 text-gangchill-cyan-deep group-hover:bg-gangchill-cyan group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs">
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs ${
+                        isMaintenanceMode
+                          ? 'bg-rose-700 text-white'
+                          : 'bg-gangchill-cyan/10 text-gangchill-cyan-deep group-hover:bg-gangchill-cyan group-hover:text-white'
+                      }`}
+                    >
+                      {isMaintenanceMode ? (
+                        <Lock className="w-3.5 h-3.5 text-white" />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      )}
                     </div>
                   </div>
                   <div className="relative z-10">
-                    <div className="text-lg font-bold font-serifBangla text-gangchill-ink group-hover:text-gangchill-cyan-deep transition-colors">
-                      বিক্রি করুন
+                    <div
+                      className={`text-base sm:text-lg font-bold font-serifBangla ${
+                        isMaintenanceMode
+                          ? 'text-white'
+                          : 'text-gangchill-ink group-hover:text-gangchill-cyan-deep transition-colors'
+                      }`}
+                    >
+                      {isMaintenanceMode ? '🔒 বিক্রি করুন — বর্তমানে বন্ধ' : 'বিক্রি করুন'}
                     </div>
-                    <div className="text-xs text-gangchill-ink-muted mt-0.5 font-medium">
-                      মাছের তথ্য ও রেডি লট জানান
+                    <div
+                      className={`text-xs mt-0.5 font-medium ${
+                        isMaintenanceMode ? 'text-rose-100' : 'text-gangchill-ink-muted'
+                      }`}
+                    >
+                      {isMaintenanceMode ? 'সাময়িক রক্ষণাবেক্ষণের কাজ চলছে' : 'মাছের তথ্য ও রেডি লট জানান'}
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 3. বিনিয়োগ করুন */}
+                <Link
+                  to={isMaintenanceMode ? '#' : '/invest'}
+                  onClick={(e) => {
+                    if (isMaintenanceMode) e.preventDefault();
+                  }}
+                  aria-disabled={isMaintenanceMode}
+                  className={`group relative overflow-hidden p-4 rounded-2xl transition-all duration-300 transform flex flex-col justify-between ${
+                    isMaintenanceMode
+                      ? 'bg-rose-600 text-white border border-rose-500 shadow-md cursor-not-allowed opacity-95'
+                      : 'backdrop-blur-xl bg-white/75 hover:bg-white/90 active:scale-[0.98] border border-white/90 hover:border-amber-400/40 shadow-glass hover:shadow-glass-glow hover:-translate-y-1'
+                  }`}
+                >
+                  {!isMaintenanceMode && (
+                    <>
+                      <div className="absolute -top-12 -right-12 w-28 h-28 rounded-full bg-gradient-to-br from-white/90 via-amber-300/20 to-transparent blur-md pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/10 opacity-70 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    </>
+                  )}
+
+                  <div className="relative z-10 flex items-center justify-between mb-3">
+                    <span
+                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                        isMaintenanceMode
+                          ? 'bg-rose-800/60 text-white border border-rose-400/40'
+                          : 'bg-amber-600/10 border border-amber-600/20 text-amber-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]'
+                      }`}
+                    >
+                      {isMaintenanceMode ? '🔒 স্থগিত' : '০৩'}
+                    </span>
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs ${
+                        isMaintenanceMode
+                          ? 'bg-rose-700 text-white'
+                          : 'bg-amber-600/10 text-amber-700 group-hover:bg-amber-600 group-hover:text-white'
+                      }`}
+                    >
+                      {isMaintenanceMode ? (
+                        <Lock className="w-3.5 h-3.5 text-white" />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="relative z-10">
+                    <div
+                      className={`text-base sm:text-lg font-bold font-serifBangla ${
+                        isMaintenanceMode
+                          ? 'text-white'
+                          : 'text-gangchill-ink group-hover:text-amber-700 transition-colors'
+                      }`}
+                    >
+                      {isMaintenanceMode ? '🔒 বিনিয়োগ — বর্তমানে বন্ধ' : 'বিনিয়োগ করুন'}
+                    </div>
+                    <div
+                      className={`text-xs mt-0.5 font-medium ${
+                        isMaintenanceMode ? 'text-rose-100' : 'text-gangchill-ink-muted'
+                      }`}
+                    >
+                      {isMaintenanceMode ? 'সাময়িক রক্ষণাবেক্ষণের কাজ চলছে' : 'মাছ সংগ্রহ তহবিল ও প্রকল্প'}
                     </div>
                   </div>
                 </Link>

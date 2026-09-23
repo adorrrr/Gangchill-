@@ -1,7 +1,9 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Upload, X, RefreshCw, AlertCircle, Check, Image as ImageIcon } from 'lucide-react';
+import { apiClient } from '../../services/apiClient';
 
 export interface ImagePreset {
+
   label: string;
   url: string;
 }
@@ -53,28 +55,76 @@ export const ImageUploader: React.FC<ImageUploaderProps> = (props) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = (file: File): Promise<string> => {
+  const processFile = async (file: File): Promise<string> => {
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      throw new Error('শুধুমাত্র JPG, PNG বা WEBP ফরম্যাটের ছবি আপলোড করা যাবে।');
+    }
+
+    const maxBytes = maxSizeMB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      throw new Error(`ছবির সাইজ সর্বোচ্চ ${maxSizeMB}MB হতে পারে।`);
+    }
+
+    // Attempt real backend upload
+    try {
+      const res = await apiClient.upload(file);
+      if (res.success && res.data?.url) {
+        return res.data.url;
+      }
+    } catch {
+      // Fall through to local fallback
+    }
+
     return new Promise((resolve, reject) => {
-      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        reject(new Error('শুধুমাত্র JPG, PNG বা WEBP ফরম্যাটের ছবি আপলোড করা যাবে।'));
-        return;
-      }
-
-      const maxBytes = maxSizeMB * 1024 * 1024;
-      if (file.size > maxBytes) {
-        reject(new Error(`ছবির সাইজ সর্বোচ্চ ${maxSizeMB}MB হতে পারে।`));
-        return;
-      }
-
       const reader = new FileReader();
+
       reader.onload = (event) => {
         const result = event.target?.result;
-        if (typeof result === 'string') {
-          resolve(result);
-        } else {
+        if (typeof result !== 'string') {
           reject(new Error('ছবি রিড করতে ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'));
+          return;
         }
+
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const maxDimension = 1200;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxDimension) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              }
+            } else {
+              if (height > maxDimension) {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              resolve(result);
+              return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.82);
+            resolve(compressed);
+          } catch {
+            resolve(result);
+          }
+        };
+        img.onerror = () => {
+          reject(new Error('ছবির ডেটা লোড করতে সমস্যা হয়েছে।'));
+        };
+        img.src = result;
       };
       reader.onerror = () => {
         reject(new Error('ছবি লোড করতে সমস্যা হয়েছে।'));
@@ -309,19 +359,19 @@ export const ImageUploader: React.FC<ImageUploaderProps> = (props) => {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`p-6 sm:p-8 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all ${
+              className={`p-4 sm:p-6 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all ${
                 dragActive
                   ? 'border-blue-500 bg-blue-50/50 scale-[0.99]'
                   : 'border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-white'
               }`}
             >
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center mb-3">
-                <Upload className="w-5 h-5" />
+              <div className="w-10 h-10 mx-auto rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center mb-2.5">
+                <Upload className="w-4.5 h-4.5" />
               </div>
               <p className="text-xs sm:text-sm font-semibold text-slate-800">
                 ছবি নির্বাচন করতে ক্লিক করুন অথবা ফাইল টেনে আনুন
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-slate-400 mt-0.5">
                 JPG, PNG বা WEBP (সর্বোচ্চ {maxSizeMB}MB)
               </p>
             </div>

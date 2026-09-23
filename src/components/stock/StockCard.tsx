@@ -33,6 +33,7 @@ export const StockCard: React.FC<StockCardProps> = ({
       : 'নদীর তাজা\nখাঁটি মাছ');
 
   const clipId = `organic-clip-${index % 3}`;
+  const imageSrc = stock.images && stock.images.length > 0 && stock.images[0] ? stock.images[0] : '/hero-fishermen-boat.png';
 
   return (
     <div
@@ -76,7 +77,7 @@ export const StockCard: React.FC<StockCardProps> = ({
           }}
         >
           <img
-            src={stock.images[0]}
+            src={imageSrc}
             alt={stock.banglaName}
             className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.025]"
             loading="lazy"

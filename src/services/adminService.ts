@@ -10,9 +10,12 @@ import {
   DashboardMetrics,
   ActivityLogItem,
   PlatformSettings,
-  OrderStatus
+  OrderStatus,
+  CustomerProfile,
+  SupplierProfile
 } from '../types/admin';
-import { CorporateRequirement, FarmerStockSubmission, InvestorInterest } from '../types/forms';
+import { InvestorInterest } from '../types/forms';
+import { apiClient } from './apiClient';
 
 const ADMIN_STOCKS_KEY = 'gangchill_admin_stocks';
 const ADMIN_ORDERS_KEY = 'gangchill_admin_orders';
@@ -21,140 +24,113 @@ const ADMIN_INVESTMENTS_KEY = 'gangchill_admin_investments';
 const ADMIN_BLOG_KEY = 'gangchill_admin_blog';
 const ADMIN_ACTIVITY_KEY = 'gangchill_admin_activity';
 const ADMIN_SETTINGS_KEY = 'gangchill_admin_settings';
-
-const CORPORATE_REQUIREMENTS_KEY = 'gangchil_corporate_requirements';
-const FARMER_SUBMISSIONS_KEY = 'gangchil_farmer_submissions';
+const ADMIN_CUSTOMERS_KEY = 'gangchill_admin_customers';
+const ADMIN_SUPPLIERS_KEY = 'gangchill_admin_suppliers';
 const INVESTOR_INTERESTS_KEY = 'gangchil_investor_interests';
 
-// Default initial buyer orders
-const INITIAL_BUYER_ORDERS: BuyerOrder[] = [
-  {
-    id: 'REQ-1726001001',
-    companyName: 'ইউনিমার্ট সুপারশপ (গুলশান ২ ব্রাঞ্চ)',
-    contactPerson: 'তানভীর আহমেদ',
-    phone: '01711-223344',
-    email: 'procurement@unimart.com.bd',
-    productName: 'চাঁদপুরের পদ্মার রূপালী ইলিশ',
-    quantity: 350,
-    unit: 'কেজি (KG)',
-    requiredDate: '2026-09-20',
-    deliveryLocation: 'গুলশান ২, ঢাকা',
-    specification: '১ কেজি+ সাইজ গ্রেড, তাজা বরফ প্যাক, নো ফরমালিন সার্টিফিকেট আবশ্যক',
-    notes: 'সকাল ৮টার মধ্যে আনলোড নিশ্চিত করতে হবে',
-    status: 'pending',
-    orderStatus: 'under_review' as OrderStatus,
-    quotedPricePerUnit: 1620,
-    totalEstimatedValue: 567000,
-    assignedStaff: 'মোঃ কামরুল হাসান (অ্যাডমিন)',
-    createdAt: '2026-09-14T08:30:00Z',
-    statusHistory: [
-      { status: 'pending', timestamp: '2026-09-14T08:30:00Z', updatedBy: 'সিস্টেম (ওয়েব ফর্ম)', note: 'ক্রেতা কর্তৃক চাহিদাপত্র জমা' },
-      { status: 'under_review' as OrderStatus, timestamp: '2026-09-14T10:15:00Z', updatedBy: 'কামরুল হাসান', note: 'চাঁদপুর বড়স্টেশন ঘাটে লট বরাদ্দ যাচাই চলছে' }
-    ]
-  },
-  {
-    id: 'REQ-1726001002',
-    companyName: 'রেডিসন ব্লু ঢাকা ওয়াটার গার্ডেন',
-    contactPerson: 'শেফ মাহবুবুল আলম',
-    phone: '01819-887766',
-    email: 'executive.chef@radissondhaka.com',
-    productName: 'খুলনা ও সাতক্ষীরার বাগদা চিংড়ি',
-    quantity: 150,
-    unit: 'কেজি (KG)',
-    requiredDate: '2026-09-18',
-    deliveryLocation: 'বিমানবন্দর রোড, ঢাকা',
-    specification: '১৬/২০ কাউন্ট এক্সপোর্ট গ্রেড, হেড-অন শেল-অন (HOSO), সম্পূর্ণ ফ্রেশ',
-    notes: 'রেফার ভ্যানে তাপমাত্রা -২° সে.-এ রাখা দরকার',
-    status: 'reviewed',
-    orderStatus: 'confirmed',
-    quotedPricePerUnit: 980,
-    totalEstimatedValue: 147000,
-    assignedStaff: 'কামরুল হাসান',
-    createdAt: '2026-09-13T14:20:00Z',
-    statusHistory: [
-      { status: 'pending', timestamp: '2026-09-13T14:20:00Z', updatedBy: 'সিস্টেম' },
-      { status: 'confirmed', timestamp: '2026-09-14T11:00:00Z', updatedBy: 'কামরুল হাসান', note: 'অফিশিয়াল পারচেজ অর্ডার কনফার্মড' }
-    ]
-  },
-  {
-    id: 'REQ-1726001003',
-    companyName: 'স্বপ্ন সুপারশপ (বনানী আউটলেট)',
-    contactPerson: 'ফারহান চৌধুরী',
-    phone: '01912-334455',
-    email: 'farhan@shwapno.net',
-    productName: 'নাটোর চলনবিলের তাজা পাবদা মাছ',
-    quantity: 200,
-    unit: 'কেজি (KG)',
-    requiredDate: '2026-09-22',
-    deliveryLocation: 'তেজগাঁও সেন্ট্রাল ডিসি, ঢাকা',
-    specification: 'মিডিয়াম সাইজ (৬০-৭০ গ্রাম/পিস), চলনবিলের জ্যান্ত সংগ্রহ',
-    status: 'pending',
-    orderStatus: 'pending',
-    createdAt: '2026-09-15T09:10:00Z',
-    statusHistory: [
-      { status: 'pending', timestamp: '2026-09-15T09:10:00Z', updatedBy: 'সিস্টেম' }
-    ]
-  }
-];
-
-// Default initial seller submissions
-const INITIAL_SELLER_LOTS: SellerLot[] = [
-  {
-    id: 'FARM-1726002001',
-    farmerName: 'মো: মোশাররফ হোসেন (জেলে সমবায়)',
-    phone: '01715-998877',
-    district: 'চাঁদপুর',
-    location: 'বড়স্টেশন মোহনা ঘাট',
-    productName: 'পদ্মার তাজা বড় ইলিশ (১.২ কেজি+)',
-    stockType: 'current',
-    quantity: 800,
-    unit: 'কেজি (KG)',
-    availabilityDate: '2026-09-16',
-    expectedPrice: 1500,
-    description: 'আজ ভোরের মেঘনা মোহনার টাটকা আহরণ। বরফ ক্রেটে সুরক্ষিত।',
-    status: 'submitted',
-    verificationStatus: 'verified',
-    fieldInspectorName: 'আব্দুল কাদের (চাঁদপুর হাব)',
-    inspectionNotes: 'মাছের কোয়ালিটি এক্সিলেন্ট। পেট অক্ষত, আঁশ ঝকঝকে।',
-    createdAt: '2026-09-14T06:45:00Z'
-  },
-  {
-    id: 'FARM-1726002002',
-    farmerName: 'হাজী রফিকুল ইসলাম ঘের প্রজেক্ট',
-    phone: '01812-445566',
-    district: 'সাতক্ষীরা',
-    location: 'শ্যামনগর সুন্দরবন সংলগ্ন ঘের',
-    productName: 'সুন্দরবনের অর্গানিক গলদা ও বাগদা চিংড়ি',
-    stockType: 'upcoming',
-    quantity: 1.5,
-    unit: 'টন (MT)',
-    availabilityDate: '2026-09-25',
-    expectedPrice: 850,
-    description: 'সামনের অমাবস্যার জোতে ঘের থেকে তোলা হবে। অগ্রিম বায়ার প্রয়োজন।',
-    status: 'submitted',
-    verificationStatus: 'pending',
-    createdAt: '2026-09-15T07:15:00Z'
-  }
-];
-
-// Default platform settings
+// Default initial settings
 const INITIAL_SETTINGS: PlatformSettings = {
-  platformName: 'Gangchill (গাংচিল) — পাইকারি মাছের বাণিজ্যিক প্ল্যাটফর্ম',
-  supportPhone: '+880 1700-000000',
-  supportEmail: 'trade@gangchill.com',
-  headOfficeAddress: 'প্লট ১২, ব্লক-সি, গুলশান-১, ঢাকা ১২১২, বাংলাদেশ',
-  hubLocations: 'চাঁদপুর (বড়স্টেশন), খুলনা (রূপসা), কক্সবাজার (ফিশারি ঘাট), নাটোর',
+  platformName: 'Gangchill B2B Hub',
+  tagline: 'জাতীয় সামুদ্রিক ও নদীর মাছের পাইকারি সরবরাহ নেটওয়ার্ক',
+  supportEmail: 'supply@gangchill.com',
+  supportPhone: '+880 1712-345678',
+  emergencyHotline: '+880 1712-345678',
+
+  businessHours: 'শনিবার - বৃহস্পতিবার: সকাল ৮টা - রাত ১০টা',
+  headOfficeAddress: 'হাউস ১২, রোড ৯, ব্লক-সি, গুলশান-১, ঢাকা ১২১২, বাংলাদেশ',
+  hubLocations: 'চাঁদপুর বড়স্টেশন, কক্সবাজার ফিশারি ঘাট, খুলনা রূপসা, নাটোর চলনবিল, ভৈরব মেঘনা ঘাট',
   defaultMoqKg: 50,
   coldChainEnabled: true,
   allowPublicSellerSubmissions: true,
   allowPublicInvestorInterest: true,
-  maintenanceMode: false
+  maintenanceMode: false,
+  maintenanceMessage: 'সাময়িক রক্ষণাবেক্ষণের জন্য আমাদের ক্রয়-বিক্রয় কার্যক্রম বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।',
+  notifyOnNewOrder: true,
+  notifyOnNewLot: true,
+  notifyOnNewInvestmentInterest: true
 };
 
 export const adminService = {
   // -------------------------------------------------------------
+  // INITIALIZATION & SERVER SYNC
+  // -------------------------------------------------------------
+  async syncAll(): Promise<void> {
+    try {
+      const [
+        stocksRes,
+        ordersRes,
+        lotsRes,
+        invsRes,
+        interestsRes,
+        blogsRes,
+        custsRes,
+        supsRes,
+        settingsRes,
+        actRes
+      ] = await Promise.allSettled([
+        apiClient.get<Stock[]>('/stocks'),
+        apiClient.get<BuyerOrder[]>('/orders'),
+        apiClient.get<SellerLot[]>('/submissions/seller-lots'),
+        apiClient.get<InvestmentOpportunity[]>('/investments'),
+        apiClient.get<InvestorInterest[]>('/submissions/investor-interests'),
+        apiClient.get<BlogPost[]>('/blog'),
+        apiClient.get<CustomerProfile[]>('/customers'),
+        apiClient.get<SupplierProfile[]>('/suppliers'),
+        apiClient.get<PlatformSettings>('/settings'),
+        apiClient.get<ActivityLogItem[]>('/dashboard/activity')
+      ]);
+
+      if (stocksRes.status === 'fulfilled' && stocksRes.value.success && stocksRes.value.data) {
+        this.saveStocks(stocksRes.value.data);
+      }
+      if (ordersRes.status === 'fulfilled' && ordersRes.value.success && ordersRes.value.data) {
+        this.saveBuyerOrders(ordersRes.value.data);
+      }
+      if (lotsRes.status === 'fulfilled' && lotsRes.value.success && lotsRes.value.data) {
+        this.saveSellerLots(lotsRes.value.data);
+      }
+      if (invsRes.status === 'fulfilled' && invsRes.value.success && invsRes.value.data) {
+        this.saveInvestments(invsRes.value.data);
+      }
+      if (interestsRes.status === 'fulfilled' && interestsRes.value.success && interestsRes.value.data) {
+        this.saveInvestorInterests(interestsRes.value.data);
+      }
+      if (blogsRes.status === 'fulfilled' && blogsRes.value.success && blogsRes.value.data) {
+        this.saveBlogPosts(blogsRes.value.data);
+      }
+      if (custsRes.status === 'fulfilled' && custsRes.value.success && custsRes.value.data) {
+        this.saveCustomers(custsRes.value.data);
+      }
+      if (supsRes.status === 'fulfilled' && supsRes.value.success && supsRes.value.data) {
+        this.saveSuppliers(supsRes.value.data);
+      }
+      if (settingsRes.status === 'fulfilled' && settingsRes.value.success && settingsRes.value.data) {
+        localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(settingsRes.value.data));
+      }
+      if (actRes.status === 'fulfilled' && actRes.value.success && actRes.value.data) {
+        localStorage.setItem(ADMIN_ACTIVITY_KEY, JSON.stringify(actRes.value.data));
+      }
+    } catch (err) {
+      console.warn('Background sync error:', err);
+    }
+  },
+
+  // -------------------------------------------------------------
   // 1. STOCKS MANAGEMENT (CRUD)
   // -------------------------------------------------------------
+  async fetchStocks(filters?: Record<string, any>): Promise<Stock[]> {
+    try {
+      const res = await apiClient.get<Stock[]>('/stocks', filters);
+      if (res.success && Array.isArray(res.data)) {
+        this.saveStocks(res.data);
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('Could not fetch stocks from backend, using cache:', err);
+    }
+    return this.getStocks();
+  },
+
   getStocks(): Stock[] {
     try {
       const stored = localStorage.getItem(ADMIN_STOCKS_KEY);
@@ -171,83 +147,148 @@ export const adminService = {
   },
 
   saveStocks(stocks: Stock[]): void {
-    localStorage.setItem(ADMIN_STOCKS_KEY, JSON.stringify(stocks));
+    try {
+      localStorage.setItem(ADMIN_STOCKS_KEY, JSON.stringify(stocks));
+    } catch {
+      // ignore
+    }
   },
 
-  createStock(stockData: Omit<Stock, 'id'>): Stock {
+  async createStock(stockData: Omit<Stock, 'id'>): Promise<Stock> {
+    // 1. Call real backend API and await server response
+    const res = await apiClient.post<Stock>('/stocks', stockData);
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'মাছের স্টক ডাটাবেজে সংরক্ষণ করা সম্ভব হয়নি। সার্ভার সংযোগ ও লগইন অবস্থা পরীক্ষা করুন।');
+    }
+
+    const savedStock = res.data;
+
+    // 2. Update local cache with real server record
     const stocks = this.getStocks();
-    const id = `fish-${Date.now()}`;
-    const newStock: Stock = { ...stockData, id };
-    stocks.unshift(newStock);
-    this.saveStocks(stocks);
-    this.logAction('নতুন মাছের স্টক পোস্ট তৈরি', 'stock', newStock.banglaName, `${newStock.quantity} ${newStock.unit} (${newStock.location})`);
-    return newStock;
+    const filtered = stocks.filter((s) => s.id !== savedStock.id && s.slug !== savedStock.slug);
+    filtered.unshift(savedStock);
+    this.saveStocks(filtered);
+
+    this.logAction('নতুন মাছের স্টক পোস্ট তৈরি', 'stock', savedStock.banglaName, `${savedStock.quantity} ${savedStock.unit} (${savedStock.location})`);
+
+    // 3. Notify all open views across the application
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_stocks_updated', { detail: savedStock }));
+    }
+
+    return savedStock;
   },
 
-  updateStock(id: string, updates: Partial<Stock>): Stock | null {
-    const stocks = this.getStocks();
-    const index = stocks.findIndex((s) => s.id === id);
-    if (index === -1) return null;
+  async updateStock(id: string, updates: Partial<Stock>): Promise<Stock> {
+    const res = await apiClient.put<Stock>(`/stocks/${id}`, updates);
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'স্টক আপডেট করা সম্ভব হয়নি।');
+    }
 
-    const updated = { ...stocks[index], ...updates };
-    stocks[index] = updated;
+    const updated = res.data;
+    const stocks = this.getStocks();
+    const index = stocks.findIndex((s) => s.id === id || s.slug === id);
+    if (index !== -1) {
+      stocks[index] = updated;
+    } else {
+      stocks.unshift(updated);
+    }
     this.saveStocks(stocks);
     this.logAction('স্টক আপডেট করা হয়েছে', 'stock', updated.banglaName, `স্ট্যাটাস: ${updated.status}, মূল্য: ৳${updated.price || 0}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_stocks_updated', { detail: updated }));
+    }
+
     return updated;
   },
 
-  deleteStock(id: string): boolean {
-    const stocks = this.getStocks();
-    const target = stocks.find((s) => s.id === id);
-    const filtered = stocks.filter((s) => s.id !== id);
-    if (filtered.length === stocks.length) return false;
+  async deleteStock(id: string): Promise<boolean> {
+    const res = await apiClient.delete(`/stocks/${id}`);
+    if (!res.success) {
+      throw new Error(res.error || 'স্টক ডিলিট করা সম্ভব হয়নি।');
+    }
 
+    const stocks = this.getStocks();
+    const target = stocks.find((s) => s.id === id || s.slug === id);
+    const resolvedId = target?.id || id;
+    const filtered = stocks.filter((s) => s.id !== id && s.slug !== id);
     this.saveStocks(filtered);
+
+    // Sync corresponding seller lot: mark it as stock deleted, so it moves to "ডিলিট করা লট"
+    const lots = this.getSellerLots();
+    let lotModified = false;
+    lots.forEach((l) => {
+      if (l.convertedStockId === resolvedId || l.convertedStockId === id) {
+        l.stockDeletedAt = new Date().toISOString();
+        l.stockDeletedName = target?.banglaName || target?.productName || resolvedId;
+        l.isStockDeleted = true;
+        lotModified = true;
+      }
+    });
+    if (lotModified) {
+      this.saveSellerLots(lots);
+    }
+
     if (target) {
       this.logAction('স্টক পোস্ট অপসারণ', 'stock', target.banglaName, `ID: ${id}`);
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_stocks_updated', { detail: { id, deleted: true } }));
+      if (lotModified) {
+        window.dispatchEvent(new CustomEvent('gangchill_seller_lots_updated'));
+      }
+    }
+
     return true;
   },
 
-  toggleStockStatus(id: string, newStatus: StockStatus): Stock | null {
-    return this.updateStock(id, { status: newStatus });
+  async toggleStockStatus(id: string, newStatus: StockStatus): Promise<Stock> {
+    const res = await apiClient.patch<Stock>(`/stocks/${id}/status`, { status: newStatus });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।');
+    }
+
+    const updated = res.data;
+    const stocks = this.getStocks();
+    const idx = stocks.findIndex((s) => s.id === id || s.slug === id);
+    if (idx !== -1) {
+      stocks[idx] = updated;
+      this.saveStocks(stocks);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_stocks_updated', { detail: updated }));
+    }
+
+    return updated;
   },
 
   // -------------------------------------------------------------
   // 2. BUYER ORDERS & REQUIREMENTS MANAGEMENT
   // -------------------------------------------------------------
-  getBuyerOrders(): BuyerOrder[] {
-    let orders: BuyerOrder[] = [];
+  async fetchBuyerOrders(): Promise<BuyerOrder[]> {
     try {
-      const stored = localStorage.getItem(ADMIN_ORDERS_KEY);
-      if (stored) {
-        orders = JSON.parse(stored);
-      } else {
-        orders = [...INITIAL_BUYER_ORDERS];
+      const res = await apiClient.get<BuyerOrder[]>('/orders');
+      if (res.success && Array.isArray(res.data)) {
+        this.saveBuyerOrders(res.data);
+        return res.data;
       }
     } catch {
-      orders = [...INITIAL_BUYER_ORDERS];
+      // fallback
     }
+    return this.getBuyerOrders();
+  },
 
-    // Merge any live submissions from user-end modal (localStorage)
+  getBuyerOrders(): BuyerOrder[] {
     try {
-      const userSubs: CorporateRequirement[] = JSON.parse(localStorage.getItem(CORPORATE_REQUIREMENTS_KEY) || '[]');
-      userSubs.forEach((sub) => {
-        if (!orders.some((o) => o.id === sub.id)) {
-          orders.unshift({
-            ...sub,
-            orderStatus: (sub.status === 'reviewed' ? 'quoted' : 'pending') as OrderStatus,
-            statusHistory: [
-              { status: 'pending', timestamp: sub.createdAt || new Date().toISOString(), updatedBy: 'ওয়েবসাইট ইউজার' }
-            ]
-          });
-        }
-      });
+      const stored = localStorage.getItem(ADMIN_ORDERS_KEY);
+      if (stored) return JSON.parse(stored);
     } catch {
-      // ignore
+      // fallback
     }
-
-    return orders;
+    return [];
   },
 
   getOrderById(id: string): BuyerOrder | null {
@@ -256,101 +297,92 @@ export const adminService = {
   },
 
   saveBuyerOrders(orders: BuyerOrder[]): void {
-    localStorage.setItem(ADMIN_ORDERS_KEY, JSON.stringify(orders));
+    try {
+      localStorage.setItem(ADMIN_ORDERS_KEY, JSON.stringify(orders));
+    } catch {
+      // ignore
+    }
   },
 
-  updateOrderStatus(orderId: string, newStatus: OrderStatus, note?: string, actor = 'অ্যাডমিন'): BuyerOrder | null {
-    const orders = this.getBuyerOrders();
-    const index = orders.findIndex((o) => o.id === orderId);
-    if (index === -1) return null;
-
-    const order = orders[index];
-    const historyItem = {
-      status: newStatus,
-      timestamp: new Date().toISOString(),
-      updatedBy: actor,
-      note: note || `অর্ডার স্ট্যাটাস পরিবর্তিত: ${newStatus}`
-    };
-
-    order.orderStatus = newStatus;
-    order.status = (newStatus === 'completed' || newStatus === 'confirmed' ? 'reviewed' : 'pending');
-    order.statusHistory = [historyItem, ...(order.statusHistory || [])];
-
-    orders[index] = order;
-    this.saveBuyerOrders(orders);
-    this.logAction('অর্ডার স্ট্যাটাস আপডেট', 'order', `${order.companyName} (${order.productName})`, `নতুন স্ট্যাটাস: ${newStatus}`);
-    return order;
-  },
-
-  addOrderInternalNote(orderId: string, text: string, author = 'অ্যাডমিন'): BuyerOrder | null {
-    const orders = this.getBuyerOrders();
-    const index = orders.findIndex((o) => o.id === orderId);
-    if (index === -1) return null;
-
-    const order = orders[index];
-    const newNote = {
-      id: `note-${Date.now()}`,
-      author,
-      text,
-      createdAt: new Date().toISOString()
-    };
-
-    order.internalNotesList = [newNote, ...(order.internalNotesList || [])];
-    orders[index] = order;
-    this.saveBuyerOrders(orders);
-    return order;
-  },
-
-  updateOrderQuote(orderId: string, quotedPricePerUnit: number): BuyerOrder | null {
-    const orders = this.getBuyerOrders();
-    const index = orders.findIndex((o) => o.id === orderId);
-    if (index === -1) return null;
-
-    const order = orders[index];
-    order.quotedPricePerUnit = quotedPricePerUnit;
-    order.totalEstimatedValue = Math.round(quotedPricePerUnit * order.quantity);
-    if (order.orderStatus === 'pending') {
-      order.orderStatus = 'quoted';
+  async updateOrderStatus(orderId: string, newStatus: OrderStatus, note?: string, actor = 'অ্যাডমিন'): Promise<BuyerOrder | null> {
+    const res = await apiClient.patch<BuyerOrder>(`/orders/${orderId}/status`, { orderStatus: newStatus, note, actor });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'অর্ডার স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।');
     }
 
-    orders[index] = order;
+    const updated = res.data;
+    const orders = this.getBuyerOrders();
+    const index = orders.findIndex((o) => o.id === orderId);
+    if (index !== -1) {
+      orders[index] = updated;
+    } else {
+      orders.unshift(updated);
+    }
     this.saveBuyerOrders(orders);
-    this.logAction('কোটেশন প্রাইস আপডেট', 'order', order.companyName, `দর: ৳${quotedPricePerUnit}/${order.unit}, মোট: ৳${order.totalEstimatedValue}`);
-    return order;
+    this.logAction('অর্ডার স্ট্যাটাস আপডেট', 'order', `${updated.companyName} (${updated.productName})`, `নতুন স্ট্যাটাস: ${newStatus} (${actor})`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_orders_updated', { detail: updated }));
+    }
+    return updated;
+  },
+
+  async addOrderInternalNote(orderId: string, text: string, author = 'অ্যাডমিন'): Promise<BuyerOrder | null> {
+    const res = await apiClient.post<BuyerOrder>(`/orders/${orderId}/notes`, { text, author });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'নোট সংরক্ষণ করা সম্ভব হয়নি।');
+    }
+
+    const updated = res.data;
+    const orders = this.getBuyerOrders();
+    const index = orders.findIndex((o) => o.id === orderId);
+    if (index !== -1) {
+      orders[index] = updated;
+    } else {
+      orders.unshift(updated);
+    }
+    this.saveBuyerOrders(orders);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_orders_updated', { detail: updated }));
+    }
+    return updated;
+  },
+
+  async updateOrderQuote(orderId: string, quotedPricePerUnit: number): Promise<BuyerOrder | null> {
+    const res = await apiClient.patch<BuyerOrder>(`/orders/${orderId}/quote`, { quotedPricePerUnit });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'কোটেশন প্রাইস আপডেট ব্যর্থ হয়েছে।');
+    }
+
+    const updated = res.data;
+    const orders = this.getBuyerOrders();
+    const index = orders.findIndex((o) => o.id === orderId);
+    if (index !== -1) {
+      orders[index] = updated;
+    } else {
+      orders.unshift(updated);
+    }
+    this.saveBuyerOrders(orders);
+    this.logAction('কোটেশন প্রাইস আপডেট', 'order', updated.companyName, `দর: ৳${quotedPricePerUnit}/${updated.unit}, মোট: ৳${updated.totalEstimatedValue}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_orders_updated', { detail: updated }));
+    }
+    return updated;
   },
 
   // -------------------------------------------------------------
   // 3. SELLER LOTS & SOURCING MANAGEMENT
   // -------------------------------------------------------------
   getSellerLots(): SellerLot[] {
-    let lots: SellerLot[] = [];
     try {
       const stored = localStorage.getItem(ADMIN_SELLER_LOTS_KEY);
-      if (stored) {
-        lots = JSON.parse(stored);
-      } else {
-        lots = [...INITIAL_SELLER_LOTS];
-      }
+      if (stored) return JSON.parse(stored);
     } catch {
-      lots = [...INITIAL_SELLER_LOTS];
+      // fallback
     }
-
-    // Merge live submissions from /sell
-    try {
-      const userSubs: FarmerStockSubmission[] = JSON.parse(localStorage.getItem(FARMER_SUBMISSIONS_KEY) || '[]');
-      userSubs.forEach((sub) => {
-        if (!lots.some((l) => l.id === sub.id)) {
-          lots.unshift({
-            ...sub,
-            verificationStatus: 'pending'
-          });
-        }
-      });
-    } catch {
-      // ignore
-    }
-
-    return lots;
+    return [];
   },
 
   getSellerLotById(id: string): SellerLot | null {
@@ -359,10 +391,27 @@ export const adminService = {
   },
 
   saveSellerLots(lots: SellerLot[]): void {
-    localStorage.setItem(ADMIN_SELLER_LOTS_KEY, JSON.stringify(lots));
+    try {
+      localStorage.setItem(ADMIN_SELLER_LOTS_KEY, JSON.stringify(lots));
+    } catch {
+      // ignore
+    }
   },
 
-  updateSellerLotStatus(lotId: string, status: 'pending' | 'verified' | 'approved' | 'rejected', notes?: string): SellerLot | null {
+  async fetchSellerLots(): Promise<SellerLot[]> {
+    try {
+      const res = await apiClient.get<SellerLot[]>('/submissions/seller-lots');
+      if (res.success && Array.isArray(res.data)) {
+        this.saveSellerLots(res.data);
+        return res.data;
+      }
+    } catch {
+      // fallback
+    }
+    return this.getSellerLots();
+  },
+
+  async updateSellerLotStatus(lotId: string, status: 'pending' | 'verified' | 'approved' | 'rejected', notes?: string): Promise<SellerLot | null> {
     const lots = this.getSellerLots();
     const index = lots.findIndex((l) => l.id === lotId);
     if (index === -1) return null;
@@ -374,14 +423,26 @@ export const adminService = {
     lots[index] = lot;
     this.saveSellerLots(lots);
     this.logAction('ঘাট সরবরাহ যাচাই আপডেট', 'seller_lot', `${lot.farmerName} (${lot.productName})`, `স্ট্যাটাস: ${status}`);
+
+    // Sync with backend API
+    try {
+      await apiClient.patch(`/submissions/seller-lots/${lotId}/status`, { status, notes });
+    } catch (e) {
+      console.error(e);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_seller_lots_updated'));
+    }
+
     return lot;
   },
 
-  convertLotToStock(lotId: string, stockOverrides?: Partial<Stock>): Stock | null {
+  async convertLotToStock(lotId: string, stockOverrides?: Partial<Stock>): Promise<Stock | null> {
     const lot = this.getSellerLotById(lotId);
     if (!lot) return null;
 
-    const createdStock = this.createStock({
+    const createdStock = await this.createStock({
       slug: `${lot.productName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
       productName: lot.productName,
       banglaName: lot.productName,
@@ -401,7 +462,7 @@ export const adminService = {
       ...stockOverrides
     });
 
-    // Mark lot as approved & link stock
+    // Mark lot as approved
     const lots = this.getSellerLots();
     const idx = lots.findIndex((l) => l.id === lotId);
     if (idx !== -1) {
@@ -410,13 +471,28 @@ export const adminService = {
       this.saveSellerLots(lots);
     }
 
-    this.logAction('সরবরাহ লট থেকে স্টক তৈরি', 'stock', createdStock.banglaName, `লট ID: ${lotId} -> স্টক ID: ${createdStock.id}`);
+    // Sync with backend API
+    apiClient.post(`/submissions/seller-lots/${lotId}/convert`, stockOverrides).catch(console.error);
+
     return createdStock;
   },
 
   // -------------------------------------------------------------
   // 4. PROCUREMENT FUNDS & INVESTOR INTERESTS
   // -------------------------------------------------------------
+  async fetchInvestments(): Promise<InvestmentOpportunity[]> {
+    try {
+      const res = await apiClient.get<InvestmentOpportunity[]>('/investments');
+      if (res.success && Array.isArray(res.data)) {
+        this.saveInvestments(res.data);
+        return res.data;
+      }
+    } catch {
+      // fallback to cached data
+    }
+    return this.getInvestments();
+  },
+
   getInvestments(): InvestmentOpportunity[] {
     try {
       const stored = localStorage.getItem(ADMIN_INVESTMENTS_KEY);
@@ -428,50 +504,103 @@ export const adminService = {
   },
 
   saveInvestments(investments: InvestmentOpportunity[]): void {
-    localStorage.setItem(ADMIN_INVESTMENTS_KEY, JSON.stringify(investments));
+    try {
+      localStorage.setItem(ADMIN_INVESTMENTS_KEY, JSON.stringify(investments));
+    } catch {
+      // ignore
+    }
   },
 
-  updateInvestmentStatus(id: string, status: 'open' | 'funded' | 'closed'): InvestmentOpportunity | null {
+  async updateInvestmentStatus(id: string, status: 'open' | 'funded' | 'closed'): Promise<InvestmentOpportunity> {
+    const res = await apiClient.patch<InvestmentOpportunity>(`/investments/${id}/status`, { status });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'তহবিল প্রকল্পের স্ট্যাটাস আপডেট করা সম্ভব হয়নি।');
+    }
+    const updated = res.data;
     const list = this.getInvestments();
-    const idx = list.findIndex((i) => i.id === id);
-    if (idx === -1) return null;
+    const idx = list.findIndex((i) => i.id === id || i.slug === id);
+    if (idx !== -1) {
+      list[idx] = updated;
+      this.saveInvestments(list);
+    }
+    this.logAction('তহবিল প্রকল্পের স্ট্যাটাস পরিবর্তন', 'investment', updated.title, `নতুন স্ট্যাটাস: ${status}`);
 
-    list[idx].status = status;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_investments_updated', { detail: updated }));
+    }
+    return updated;
+  },
+
+  async createInvestment(opportunity: InvestmentOpportunity): Promise<InvestmentOpportunity> {
+    const res = await apiClient.post<InvestmentOpportunity>('/investments', opportunity);
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'নতুন তহবিল প্রকল্প ডাটাবেজে সংরক্ষণ করা সম্ভব হয়নি।');
+    }
+    const saved = res.data;
+    const list = this.getInvestments();
+    const filtered = list.filter((i) => i.id !== saved.id && i.slug !== saved.slug);
+    filtered.unshift(saved);
+    this.saveInvestments(filtered);
+    this.logAction('নতুন তহবিল প্রকল্প তৈরি', 'investment', saved.title, `টার্গেট ক্যাপিটাল: ৳${saved.requiredCapital.toLocaleString('bn-BD')}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_investments_updated', { detail: saved }));
+    }
+    return saved;
+  },
+
+  async updateInvestment(id: string, updates: Partial<InvestmentOpportunity>): Promise<InvestmentOpportunity> {
+    const res = await apiClient.put<InvestmentOpportunity>(`/investments/${id}`, updates);
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'তহবিল প্রকল্প আপডেট করা সম্ভব হয়নি।');
+    }
+    const updated = res.data;
+    const list = this.getInvestments();
+    const idx = list.findIndex((i) => i.id === id || i.slug === id);
+    if (idx !== -1) {
+      list[idx] = updated;
+    } else {
+      list.unshift(updated);
+    }
     this.saveInvestments(list);
-    this.logAction('তহবিল প্রকল্পের স্ট্যাটাস পরিবর্তন', 'investment', list[idx].title, `নতুন স্ট্যাটাস: ${status}`);
-    return list[idx];
+    this.logAction('তহবিল প্রকল্প আপডেট', 'investment', updated.title);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_investments_updated', { detail: updated }));
+    }
+    return updated;
   },
 
-  createInvestment(opportunity: InvestmentOpportunity): InvestmentOpportunity {
+  async deleteInvestment(id: string): Promise<boolean> {
+    const res = await apiClient.delete(`/investments/${id}`);
+    if (!res.success) {
+      throw new Error(res.error || 'তহবিল প্রকল্প মুছে ফেলা সম্ভব হয়নি।');
+    }
     const list = this.getInvestments();
-    list.unshift(opportunity);
-    this.saveInvestments(list);
-    this.logAction('নতুন তহবিল প্রকল্প তৈরি', 'investment', opportunity.title, `টার্গেট ক্যাপিটাল: ৳${opportunity.requiredCapital.toLocaleString('bn-BD')}`);
-    return opportunity;
-  },
-
-  updateInvestment(id: string, updates: Partial<InvestmentOpportunity>): InvestmentOpportunity | null {
-    const list = this.getInvestments();
-    const idx = list.findIndex((i) => i.id === id);
-    if (idx === -1) return null;
-
-    list[idx] = { ...list[idx], ...updates };
-    this.saveInvestments(list);
-    this.logAction('তহবিল প্রকল্প আপডেট', 'investment', list[idx].title);
-    return list[idx];
-  },
-
-  deleteInvestment(id: string): boolean {
-    const list = this.getInvestments();
-    const target = list.find((i) => i.id === id);
-    const filtered = list.filter((i) => i.id !== id);
-    if (filtered.length === list.length) return false;
-
+    const target = list.find((i) => i.id === id || i.slug === id);
+    const filtered = list.filter((i) => i.id !== id && i.slug !== id);
     this.saveInvestments(filtered);
     if (target) {
       this.logAction('তহবিল প্রকল্প মুছে ফেলা', 'investment', target.title);
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_investments_updated', { detail: { id, deleted: true } }));
+    }
     return true;
+  },
+
+  async fetchInvestorInterests(): Promise<InvestorInterest[]> {
+    try {
+      const res = await apiClient.get<InvestorInterest[]>('/submissions/investor-interests');
+      if (res.success && Array.isArray(res.data)) {
+        this.saveInvestorInterests(res.data);
+        return res.data;
+      }
+    } catch {
+      // fallback to cache
+    }
+    return this.getInvestorInterests();
   },
 
   getInvestorInterests(): InvestorInterest[] {
@@ -481,64 +610,71 @@ export const adminService = {
     } catch {
       // fallback
     }
-    const INITIAL_INTERESTS: InvestorInterest[] = [
-      {
-        id: 'INV-1726005001',
-        opportunityId: 'hilsa-procurement-chandpur-2026',
-        opportunityTitle: 'পদ্মার রূপালী ইলিশ সংগ্রহ তহবিল (চাঁদপুর বড়স্টেশন)',
-        investorName: 'ইঞ্জি. তারেকুর রহমান',
-        phone: '01712-887766',
-        email: 'tariqur.eng@gmail.com',
-        interestedAmount: 250000,
-        notes: '৬ মাসের মেয়াদে অংশ নিতে চাই। এগ্রিমেন্ট ড্রাফট হোয়াটসঅ্যাপে দিন।',
-        expectedProfit: 35000,
-        createdAt: '2026-09-14T11:20:00Z'
-      },
-      {
-        id: 'INV-1726005002',
-        opportunityId: 'shrimp-hub-khulna-2026',
-        opportunityTitle: 'খুলনা ও সাতক্ষীরা বাগদা চিংড়ি প্রসেসিং ও কোল্ড চেইন',
-        investorName: 'ড. কামরুন্নাহার শিলা',
-        phone: '01911-332211',
-        email: 'dr.sheela.kh@yahoo.com',
-        interestedAmount: 500000,
-        notes: 'কোল্ড স্টোরেজ ব্যাকড সিকিউরিটি ডিড নিশ্চিত হলে পুরো ফান্ডিং করতে প্রস্তুত।',
-        expectedProfit: 75000,
-        createdAt: '2026-09-13T16:45:00Z'
-      },
-      {
-        id: 'INV-1726005003',
-        opportunityId: 'marine-deepsea-coxsbazar-2026',
-        opportunityTitle: 'কক্সবাজার গভীর সমুদ্র ট্রলার কনসোর্টিয়াম তহবিল',
-        investorName: 'মাহফুজুর রহমান (গ্রিন ক্যাপিটাল)',
-        phone: '01819-556677',
-        email: 'invest@greencapital.com.bd',
-        interestedAmount: 1000000,
-        notes: 'প্রাথমিক আলোচনার জন্য বনানী অফিসে সরাসরি মিটিং করতে আগ্রহী।',
-        expectedProfit: 160000,
-        createdAt: '2026-09-15T09:00:00Z'
-      }
-    ];
-    localStorage.setItem(INVESTOR_INTERESTS_KEY, JSON.stringify(INITIAL_INTERESTS));
-    return INITIAL_INTERESTS;
+    return [];
   },
 
   saveInvestorInterests(interests: InvestorInterest[]): void {
-    localStorage.setItem(INVESTOR_INTERESTS_KEY, JSON.stringify(interests));
+    try {
+      localStorage.setItem(INVESTOR_INTERESTS_KEY, JSON.stringify(interests));
+    } catch {
+      // ignore
+    }
   },
 
-  deleteInvestorInterest(id: string): boolean {
+  async updateInvestorInterestStatus(id: string, status: string): Promise<InvestorInterest> {
+    const res = await apiClient.patch<InvestorInterest>(`/submissions/investor-interests/${id}/status`, { status });
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'আবেদনের স্ট্যাটাস আপডেট করা সম্ভব হয়নি।');
+    }
+    const updated = res.data;
+    const list = this.getInvestorInterests();
+    const idx = list.findIndex((i) => i.id === id);
+    if (idx !== -1) {
+      list[idx] = updated;
+    } else {
+      list.unshift(updated);
+    }
+    this.saveInvestorInterests(list);
+    this.logAction('বিনিয়োগ আবেদন স্ট্যাটাস পরিবর্তন', 'investment', updated.investorName, `স্ট্যাটাস: ${status}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_investments_updated', { detail: updated }));
+    }
+    return updated;
+  },
+
+  async deleteInvestorInterest(id: string): Promise<boolean> {
+    const res = await apiClient.delete(`/submissions/investor-interests/${id}`);
+    if (!res.success) {
+      throw new Error(res.error || 'আবেদন মুছে ফেলা সম্ভব হয়নি।');
+    }
     const list = this.getInvestorInterests();
     const filtered = list.filter((i) => i.id !== id);
-    if (filtered.length === list.length) return false;
     this.saveInvestorInterests(filtered);
     this.logAction('বিনিয়োগকারীর আবেদন মুছে ফেলা', 'investment', `ID: ${id}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_investments_updated', { detail: { id, deleted: true } }));
+    }
     return true;
   },
 
   // -------------------------------------------------------------
   // 5. BLOG ARTICLES MANAGEMENT
   // -------------------------------------------------------------
+  async fetchBlogPosts(): Promise<BlogPost[]> {
+    try {
+      const res = await apiClient.get<BlogPost[]>('/blog');
+      if (res.success && Array.isArray(res.data)) {
+        this.saveBlogPosts(res.data);
+        return res.data;
+      }
+    } catch {
+      // fallback
+    }
+    return this.getBlogPosts();
+  },
+
   getBlogPosts(): BlogPost[] {
     try {
       const stored = localStorage.getItem(ADMIN_BLOG_KEY);
@@ -550,38 +686,68 @@ export const adminService = {
   },
 
   saveBlogPosts(posts: BlogPost[]): void {
-    localStorage.setItem(ADMIN_BLOG_KEY, JSON.stringify(posts));
+    try {
+      localStorage.setItem(ADMIN_BLOG_KEY, JSON.stringify(posts));
+    } catch {
+      // ignore
+    }
   },
 
-  createBlogPost(postData: BlogPost): BlogPost {
+  async createBlogPost(postData: BlogPost): Promise<BlogPost> {
+    const res = await apiClient.post<BlogPost>('/blog', postData);
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'ব্লগ আর্টিকেল ডাটাবেজে সংরক্ষণ করা সম্ভব হয়নি।');
+    }
+    const saved = res.data;
     const posts = this.getBlogPosts();
-    posts.unshift(postData);
-    this.saveBlogPosts(posts);
-    this.logAction('নতুন ব্লগ আর্টিকেল প্রকাশ', 'blog', postData.title, `ক্যাটাগরি: ${postData.category}`);
-    return postData;
+    const filtered = posts.filter((p) => p.slug !== saved.slug);
+    filtered.unshift(saved);
+    this.saveBlogPosts(filtered);
+    this.logAction('নতুন ব্লগ আর্টিকেল প্রকাশ', 'blog', saved.title, `ক্যাটাগরি: ${saved.category}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_blog_updated', { detail: saved }));
+    }
+    return saved;
   },
 
-  updateBlogPost(slug: string, updates: Partial<BlogPost>): BlogPost | null {
+  async updateBlogPost(slug: string, updates: Partial<BlogPost>): Promise<BlogPost> {
+    const res = await apiClient.put<BlogPost>(`/blog/${slug}`, updates);
+    if (!res.success || !res.data) {
+      throw new Error(res.error || 'ব্লগ আর্টিকেল আপডেট করা সম্ভব হয়নি।');
+    }
+    const updated = res.data;
     const posts = this.getBlogPosts();
     const index = posts.findIndex((p) => p.slug === slug);
-    if (index === -1) return null;
-
-    const updated = { ...posts[index], ...updates, updatedAt: new Date().toISOString().split('T')[0] };
-    posts[index] = updated;
+    if (index !== -1) {
+      posts[index] = updated;
+    } else {
+      posts.unshift(updated);
+    }
     this.saveBlogPosts(posts);
     this.logAction('ব্লগ আর্টিকেল আপডেট', 'blog', updated.title, `Slug: ${slug}`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_blog_updated', { detail: updated }));
+    }
     return updated;
   },
 
-  deleteBlogPost(slug: string): boolean {
+  async deleteBlogPost(slug: string): Promise<boolean> {
+    const res = await apiClient.delete(`/blog/${slug}`);
+    if (!res.success) {
+      throw new Error(res.error || 'ব্লগ আর্টিকেল মুছে ফেলা সম্ভব হয়নি।');
+    }
     const posts = this.getBlogPosts();
     const target = posts.find((p) => p.slug === slug);
     const filtered = posts.filter((p) => p.slug !== slug);
-    if (filtered.length === posts.length) return false;
-
     this.saveBlogPosts(filtered);
     if (target) {
       this.logAction('ব্লগ আর্টিকেল মুছে ফেলা', 'blog', target.title, `Slug: ${slug}`);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_blog_updated', { detail: { slug, deleted: true } }));
     }
     return true;
   },
@@ -596,29 +762,10 @@ export const adminService = {
     } catch {
       // fallback
     }
-    return [
-      {
-        id: 'act-1',
-        action: 'অর্ডার পর্যালোচনা',
-        targetType: 'order',
-        targetTitle: 'ইউনিমার্ট সুপারশপ (চাঁদপুরের ইলিশ)',
-        actor: 'কামরুল হাসান',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        details: 'কোটেশন প্রাইস ৳১৬২০/কেজি চূড়ান্ত'
-      },
-      {
-        id: 'act-2',
-        action: 'নতুন মাছের লট যুক্ত',
-        targetType: 'stock',
-        targetTitle: 'চাঁদপুরের পদ্মার রূপালী ইলিশ',
-        actor: 'কামরুল হাসান',
-        timestamp: new Date(Date.now() - 14400000).toISOString(),
-        details: '১.২ টন লাইভ স্টকে প্রকাশ'
-      }
-    ];
+    return [];
   },
 
-  logAction(action: string, targetType: ActivityLogItem['targetType'], targetTitle: string, details?: string, actor = 'কামরুল হাসান'): void {
+  logAction(action: string, targetType: ActivityLogItem['targetType'], targetTitle: string, details?: string, actor = 'MD Admin'): void {
     const logs = this.getActivityLogs();
     const newLog: ActivityLogItem = {
       id: `act-${Date.now()}`,
@@ -630,7 +777,11 @@ export const adminService = {
       details
     };
     logs.unshift(newLog);
-    localStorage.setItem(ADMIN_ACTIVITY_KEY, JSON.stringify(logs.slice(0, 30)));
+    try {
+      localStorage.setItem(ADMIN_ACTIVITY_KEY, JSON.stringify(logs.slice(0, 30)));
+    } catch {
+      // ignore
+    }
   },
 
   // -------------------------------------------------------------
@@ -678,15 +829,230 @@ export const adminService = {
   getSettings(): PlatformSettings {
     try {
       const stored = localStorage.getItem(ADMIN_SETTINGS_KEY);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        return {
+          ...INITIAL_SETTINGS,
+          ...JSON.parse(stored)
+        };
+      }
     } catch {
       // fallback
     }
     return { ...INITIAL_SETTINGS };
   },
 
-  saveSettings(settings: PlatformSettings): void {
-    localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(settings));
-    this.logAction('প্ল্যাটফর্ম সেটিংস আপডেট', 'settings', 'জেনারেল কনফিগারেশন', 'সাপোর্ট ফোন ও হাবের তথ্য সংশোধিত');
+  async fetchSettings(): Promise<PlatformSettings> {
+    try {
+      const res = await apiClient.get<PlatformSettings>('/settings');
+      if (res.success && res.data) {
+        const merged = { ...INITIAL_SETTINGS, ...res.data };
+        try {
+          localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gangchill_settings_updated', { detail: merged }));
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch settings from server:', err);
+    }
+    return this.getSettings();
+  },
+
+  async saveSettings(settings: PlatformSettings, actor = 'MD Admin'): Promise<PlatformSettings> {
+    try {
+      localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // ignore
+    }
+    this.logAction(
+      'প্ল্যাটফর্ম সেটিংস আপডেট',
+      'settings',
+      'জেনারেল কনফিগারেশন',
+      settings.maintenanceMode ? 'রক্ষণাবেক্ষণ মোড (Maintenance Mode) সক্রিয় করা হয়েছে' : 'কোম্পানির তথ্য, হাব ও পলিসি সংরক্ষিত হয়েছে',
+      actor
+    );
+
+    // Sync with backend API
+    try {
+      const res = await apiClient.post<PlatformSettings>('/settings', settings);
+      if (res.success && res.data) {
+        const merged = { ...INITIAL_SETTINGS, ...res.data };
+        try {
+          localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gangchill_settings_updated', { detail: merged }));
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.error('Failed to save settings on server:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_settings_updated', { detail: settings }));
+    }
+    return settings;
+  },
+
+  async resetSettings(actor = 'MD Admin'): Promise<PlatformSettings> {
+    try {
+      localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(INITIAL_SETTINGS));
+    } catch {
+      // ignore
+    }
+    this.logAction('প্ল্যাটফর্ম সেটিংস রিসেট', 'settings', 'ডিফল্ট কনফিগারেশন', 'প্রাথমিক ডিফল্ট মানে পুনঃস্থাপন', actor);
+
+    try {
+      const res = await apiClient.post<PlatformSettings>('/settings/reset');
+      if (res.success && res.data) {
+        const merged = { ...INITIAL_SETTINGS, ...res.data };
+        try {
+          localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gangchill_settings_updated', { detail: merged }));
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.error('Failed to reset settings on server:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gangchill_settings_updated', { detail: INITIAL_SETTINGS }));
+    }
+    return { ...INITIAL_SETTINGS };
+  },
+
+  // -------------------------------------------------------------
+  // 9. CUSTOMERS MANAGEMENT (CRUD)
+  // -------------------------------------------------------------
+  getCustomers(): CustomerProfile[] {
+    try {
+      const stored = localStorage.getItem(ADMIN_CUSTOMERS_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // fallback
+    }
+    return [];
+  },
+
+  saveCustomers(customers: CustomerProfile[]): void {
+    try {
+      localStorage.setItem(ADMIN_CUSTOMERS_KEY, JSON.stringify(customers));
+    } catch {
+      // ignore
+    }
+  },
+
+  createCustomer(profile: CustomerProfile): CustomerProfile {
+    const list = this.getCustomers();
+    list.unshift(profile);
+    this.saveCustomers(list);
+    this.logAction('নতুন করপোরেট বায়ার প্রোফাইল তৈরি', 'order', profile.companyName, `যোগাযোগ: ${profile.contactPerson} (${profile.phone})`);
+
+    apiClient.post('/customers', profile).catch(console.error);
+    return profile;
+  },
+
+  updateCustomer(id: string, updates: Partial<CustomerProfile>): CustomerProfile | null {
+    const list = this.getCustomers();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx === -1) return null;
+
+    list[idx] = { ...list[idx], ...updates };
+    this.saveCustomers(list);
+    this.logAction('করপোরেট বায়ার প্রোফাইল আপডেট', 'order', list[idx].companyName, `টিয়ার: ${list[idx].tier}`);
+
+    apiClient.put(`/customers/${id}`, updates).catch(console.error);
+    return list[idx];
+  },
+
+  deleteCustomer(id: string): boolean {
+    const list = this.getCustomers();
+    const target = list.find((c) => c.id === id);
+    const filtered = list.filter((c) => c.id !== id);
+    if (filtered.length === list.length) return false;
+
+    this.saveCustomers(filtered);
+    if (target) {
+      this.logAction('করপোরেট বায়ার প্রোফাইল মুছে ফেলা', 'order', target.companyName);
+    }
+
+    apiClient.delete(`/customers/${id}`).catch(console.error);
+    return true;
+  },
+
+  // -------------------------------------------------------------
+  // 10. SUPPLIERS MANAGEMENT (CRUD)
+  // -------------------------------------------------------------
+  getSuppliers(): SupplierProfile[] {
+    try {
+      const stored = localStorage.getItem(ADMIN_SUPPLIERS_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // fallback
+    }
+    return [];
+  },
+
+  saveSuppliers(suppliers: SupplierProfile[]): void {
+    try {
+      localStorage.setItem(ADMIN_SUPPLIERS_KEY, JSON.stringify(suppliers));
+    } catch {
+      // ignore
+    }
+  },
+
+  createSupplier(profile: SupplierProfile): SupplierProfile {
+    const list = this.getSuppliers();
+    list.unshift(profile);
+    this.saveSuppliers(list);
+    this.logAction('নতুন ঘাট ও খামারি প্রোফাইল তৈরি', 'seller_lot', profile.farmerName, `অঞ্চল: ${profile.district}, ফোন: ${profile.phone}`);
+
+    apiClient.post('/suppliers', profile).catch(console.error);
+    return profile;
+  },
+
+  updateSupplier(id: string, updates: Partial<SupplierProfile>): SupplierProfile | null {
+    const list = this.getSuppliers();
+    const idx = list.findIndex((s) => s.id === id);
+    if (idx === -1) return null;
+
+    list[idx] = { ...list[idx], ...updates };
+    this.saveSuppliers(list);
+    this.logAction('ঘাট ও খামারি প্রোফাইল আপডেট', 'seller_lot', list[idx].farmerName, `স্ট্যাটাস: ${list[idx].verificationBadge}`);
+
+    apiClient.put(`/suppliers/${id}`, updates).catch(console.error);
+    return list[idx];
+  },
+
+  deleteSupplier(id: string): boolean {
+    const list = this.getSuppliers();
+    const target = list.find((s) => s.id === id);
+    const filtered = list.filter((s) => s.id !== id);
+    if (filtered.length === list.length) return false;
+
+    this.saveSuppliers(filtered);
+    if (target) {
+      this.logAction('ঘাট ও খামারি প্রোফাইল মুছে ফেলা', 'seller_lot', target.farmerName);
+    }
+
+    apiClient.delete(`/suppliers/${id}`).catch(console.error);
+    return true;
   }
 };
+
+// Automatically sync in background when running in browser
+if (typeof window !== 'undefined') {
+  adminService.syncAll();
+}

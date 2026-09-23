@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="16" fill="#174C36" />
+  <!-- Stylized Gangchill (seagull/agricultural grain wing) motif in paddy gold -->
+  <path d="M14 38C22 34 27 24 32 18C37 24 42 34 50 38C43 36 37 32 32 26C27 32 21 36 14 38Z" fill="#D99B3D" />
+  <circle cx="32" cy="43" r="4" fill="#F7F4EC" />
+</svg>

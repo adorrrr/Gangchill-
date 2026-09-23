@@ -22,12 +22,22 @@ export const AdminStocksPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<'all' | StockStatus>('all');
   const [deleteTarget, setDeleteTarget] = useState<Stock | null>(null);
 
-  const loadStocks = () => {
-    setStocks(adminService.getStocks());
+  const loadStocks = async () => {
+    try {
+      const serverStocks = await adminService.fetchStocks();
+      setStocks(serverStocks);
+    } catch (err) {
+      setStocks(adminService.getStocks());
+    }
   };
 
   useEffect(() => {
     loadStocks();
+    const handleUpdate = () => {
+      loadStocks();
+    };
+    window.addEventListener('gangchill_stocks_updated', handleUpdate);
+    return () => window.removeEventListener('gangchill_stocks_updated', handleUpdate);
   }, []);
 
   const categories = ['সব', ...Array.from(new Set(stocks.map((s) => s.category)))];
@@ -46,42 +56,33 @@ export const AdminStocksPage: React.FC = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const handleStatusChange = (id: string, newStatus: StockStatus) => {
-    adminService.toggleStockStatus(id, newStatus);
-    loadStocks();
+  const handleStatusChange = async (id: string, newStatus: StockStatus) => {
+    try {
+      await adminService.toggleStockStatus(id, newStatus);
+      await loadStocks();
+    } catch (err) {
+      console.error('Failed to change status:', err);
+      loadStocks();
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    adminService.deleteStock(deleteTarget.id);
-    setDeleteTarget(null);
-    loadStocks();
+    try {
+      await adminService.deleteStock(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadStocks();
+    } catch (err) {
+      console.error('Failed to delete stock:', err);
+      setDeleteTarget(null);
+      loadStocks();
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold font-serifBangla text-slate-900 tracking-tight">
-            মাছের স্টক ইনভেন্টরি
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            প্রস্তুত ও আসন্ন মাছের পাইকারি লট, মূল্য ও ইনভেন্টরি ব্যবস্থাপনা
-          </p>
-        </div>
-
-        <Link
-          to="/admin/stocks/new"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-[0.99] self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>নতুন স্টক যুক্ত করুন</span>
-        </Link>
-      </div>
-
-      {/* 2. Compact Search & Filter Bar */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+      {/* Compact Search & Filter Bar */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
         <div className="relative flex-1 md:max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -93,7 +94,7 @@ export const AdminStocksPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 text-slate-500">
             <Filter className="w-3.5 h-3.5" />
             <span>ক্যাটাগরি:</span>
@@ -101,7 +102,7 @@ export const AdminStocksPage: React.FC = () => {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white cursor-pointer"
+            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white cursor-pointer"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
@@ -113,38 +114,46 @@ export const AdminStocksPage: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as any)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white cursor-pointer"
+            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white cursor-pointer"
           >
             <option value="all">সব স্ট্যাটাস</option>
             <option value="live">লাইভ স্টক (Live)</option>
             <option value="upcoming">আসন্ন (Upcoming)</option>
             <option value="sold">স্টক সমাপ্ত (Sold)</option>
           </select>
+
+          <Link
+            to="/admin/stocks/new"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-[0.99] shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>নতুন স্টক</span>
+          </Link>
         </div>
       </div>
 
       {/* 3. Clean Data Table */}
       <div className="rounded-2xl bg-white border border-slate-200/80 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full min-w-[700px] text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-[11px] font-mono text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
               <tr>
-                <th className="py-3.5 px-4 font-semibold">মাছের নাম ও ছবি</th>
-                <th className="py-3.5 px-4 font-semibold">ক্যাটাগরি</th>
-                <th className="py-3.5 px-4 font-semibold">ঘাট ও জেলা</th>
-                <th className="py-3.5 px-4 font-semibold">মজুত পরিমাণ</th>
-                <th className="py-3.5 px-4 font-semibold">পাইকারি মূল্য</th>
-                <th className="py-3.5 px-4 font-semibold">স্ট্যাটাস</th>
-                <th className="py-3.5 px-4 font-semibold text-right">পদক্ষেপ</th>
+                <th className="py-2.5 px-3.5 font-semibold">মাছের নাম ও ছবি</th>
+                <th className="py-2.5 px-3.5 font-semibold">ক্যাটাগরি</th>
+                <th className="py-2.5 px-3.5 font-semibold">ঘাট ও জেলা</th>
+                <th className="py-2.5 px-3.5 font-semibold">মজুত পরিমাণ</th>
+                <th className="py-2.5 px-3.5 font-semibold">পাইকারি মূল্য</th>
+                <th className="py-2.5 px-3.5 font-semibold">স্ট্যাটাস</th>
+                <th className="py-2.5 px-3.5 font-semibold text-right">পদক্ষেপ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredStocks.map((stock) => (
                 <tr key={stock.id} className="hover:bg-slate-50/70 transition-colors">
                   {/* Fish Name & Image */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                  <td className="py-2.5 px-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
                         <img
                           src={stock.images && stock.images.length > 0 ? stock.images[0] : '/hero-fishermen-boat.png'}
                           alt={stock.banglaName}

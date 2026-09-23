@@ -1,5 +1,5 @@
 import { Stock, StockStatus } from '../types/stock';
-import { adminService } from './adminService';
+import { apiClient } from './apiClient';
 
 export interface StockFilterOptions {
   category?: string;
@@ -10,75 +10,87 @@ export interface StockFilterOptions {
 
 export const stockService = {
   /**
-   * Fetch all stocks (with optional filters)
+   * Fetch all stocks with optional server-side filters
    */
   async getStocks(filters?: StockFilterOptions): Promise<Stock[]> {
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    
-    let result = adminService.getStocks();
+    try {
+      const params: Record<string, any> = {};
+      if (filters?.status && filters.status !== 'all') params.status = filters.status;
+      if (filters?.category && filters.category !== 'সব') params.category = filters.category;
+      if (filters?.district && filters.district !== 'সব জেলা') params.district = filters.district;
+      if (filters?.searchQuery && filters.searchQuery.trim() !== '') params.searchQuery = filters.searchQuery.trim();
 
-    if (!filters) return result;
-
-    if (filters.status && filters.status !== 'all') {
-      result = result.filter((stock) => stock.status === filters.status);
+      const res = await apiClient.get<Stock[]>('/stocks', params);
+      if (res.success && Array.isArray(res.data)) {
+        return res.data;
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch stocks from API:', err);
+      return [];
     }
-
-    if (filters.category && filters.category !== 'সব') {
-      result = result.filter((stock) => stock.category === filters.category);
-    }
-
-    if (filters.district && filters.district !== 'সব জেলা') {
-      result = result.filter((stock) => stock.district === filters.district);
-    }
-
-    if (filters.searchQuery && filters.searchQuery.trim() !== '') {
-      const query = filters.searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (stock) =>
-          stock.banglaName.toLowerCase().includes(query) ||
-          stock.productName.toLowerCase().includes(query) ||
-          stock.location.toLowerCase().includes(query) ||
-          stock.category.toLowerCase().includes(query)
-      );
-    }
-
-    return result;
   },
 
   /**
-   * Get single stock by slug
+   * Get single stock by slug or id
    */
   async getStockBySlug(slug: string): Promise<Stock | null> {
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    const stocks = adminService.getStocks();
-    const stock = stocks.find((item) => item.slug === slug || item.id === slug);
-    return stock || null;
+    try {
+      const res = await apiClient.get<Stock>(`/stocks/${encodeURIComponent(slug)}`);
+      if (res.success && res.data) {
+        return res.data;
+      }
+      return null;
+    } catch (err) {
+      console.error(`Failed to fetch stock ${slug}:`, err);
+      return null;
+    }
   },
 
   /**
    * Get live/available stocks
    */
   async getLiveStocks(limit?: number): Promise<Stock[]> {
-    const stocks = adminService.getStocks();
-    const live = stocks.filter((item) => item.status === 'live');
-    return limit ? live.slice(0, limit) : live;
+    try {
+      const res = await apiClient.get<Stock[]>('/stocks', { status: 'live' });
+      if (res.success && Array.isArray(res.data)) {
+        return limit ? res.data.slice(0, limit) : res.data;
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch live stocks:', err);
+      return [];
+    }
   },
 
   /**
    * Get upcoming stocks
    */
   async getUpcomingStocks(limit?: number): Promise<Stock[]> {
-    const stocks = adminService.getStocks();
-    const upcoming = stocks.filter((item) => item.status === 'upcoming');
-    return limit ? upcoming.slice(0, limit) : upcoming;
+    try {
+      const res = await apiClient.get<Stock[]>('/stocks', { status: 'upcoming' });
+      if (res.success && Array.isArray(res.data)) {
+        return limit ? res.data.slice(0, limit) : res.data;
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch upcoming stocks:', err);
+      return [];
+    }
   },
 
   /**
    * Get available categories for filtering
    */
   async getCategories(): Promise<string[]> {
-    const stocks = adminService.getStocks();
-    const categories = Array.from(new Set(stocks.map((s) => s.category)));
-    return ['সব', ...categories];
+    try {
+      const res = await apiClient.get<string[]>('/stocks/categories');
+      if (res.success && Array.isArray(res.data)) {
+        return res.data;
+      }
+      return ['সব'];
+    } catch {
+      return ['সব'];
+    }
   }
 };

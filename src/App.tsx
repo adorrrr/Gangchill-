@@ -12,36 +12,53 @@ import { BlogPage } from './pages/Blog';
 import { BlogArticlePage } from './pages/BlogArticle';
 import { NotFoundPage } from './pages/NotFound';
 
-// Admin Suite imports
 import { AdminRouteGuard } from './components/admin/AdminRouteGuard';
-import { AdminLayout } from './components/admin/AdminLayout';
-import { AdminLoginPage } from './pages/admin/Login';
-import { AdminDashboardPage } from './pages/admin/Dashboard';
-import { AdminStocksPage } from './pages/admin/Stocks';
-import { AdminStockEditPage } from './pages/admin/StockEdit';
-import { AdminOrdersPage } from './pages/admin/Orders';
-import { AdminSubmissionsPage } from './pages/admin/Submissions';
-import { AdminInvestmentsPage } from './pages/admin/Investments';
-import { AdminCustomersPage } from './pages/admin/Customers';
-import { AdminSellersPage } from './pages/admin/Sellers';
-import { AdminBlogPage } from './pages/admin/Blog';
-import { AdminBlogEditPage } from './pages/admin/BlogEdit';
-import { AdminReportsPage } from './pages/admin/Reports';
-import { AdminSettingsPage } from './pages/admin/Settings';
+
+// Lazy-loaded Admin Pages & Layout for Bundle Optimization
+const AdminLayout = React.lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminLoginPage = React.lazy(() => import('./pages/admin/Login').then(m => ({ default: m.AdminLoginPage })));
+const AdminDashboardPage = React.lazy(() => import('./pages/admin/Dashboard').then(m => ({ default: m.AdminDashboardPage })));
+const AdminStocksPage = React.lazy(() => import('./pages/admin/Stocks').then(m => ({ default: m.AdminStocksPage })));
+const AdminStockEditPage = React.lazy(() => import('./pages/admin/StockEdit').then(m => ({ default: m.AdminStockEditPage })));
+const AdminOrdersPage = React.lazy(() => import('./pages/admin/Orders').then(m => ({ default: m.AdminOrdersPage })));
+const AdminSubmissionsPage = React.lazy(() => import('./pages/admin/Submissions').then(m => ({ default: m.AdminSubmissionsPage })));
+const AdminInvestmentsPage = React.lazy(() => import('./pages/admin/Investments').then(m => ({ default: m.AdminInvestmentsPage })));
+const AdminCustomersPage = React.lazy(() => import('./pages/admin/Customers').then(m => ({ default: m.AdminCustomersPage })));
+const AdminSellersPage = React.lazy(() => import('./pages/admin/Sellers').then(m => ({ default: m.AdminSellersPage })));
+const AdminBlogPage = React.lazy(() => import('./pages/admin/Blog').then(m => ({ default: m.AdminBlogPage })));
+const AdminBlogEditPage = React.lazy(() => import('./pages/admin/BlogEdit').then(m => ({ default: m.AdminBlogEditPage })));
+const AdminReportsPage = React.lazy(() => import('./pages/admin/Reports').then(m => ({ default: m.AdminReportsPage })));
+const AdminSettingsPage = React.lazy(() => import('./pages/admin/Settings').then(m => ({ default: m.AdminSettingsPage })));
+
+const AdminLoadingFallback: React.FC = () => (
+  <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="w-10 h-10 border-3 border-teal-500/30 border-t-teal-400 rounded-full animate-spin mb-3"></div>
+    <p className="text-slate-400 text-xs tracking-wider">লোড হচ্ছে...</p>
+  </div>
+);
 
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
         {/* Admin Login (Standalone Clean View without navbar/footer) */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route
+          path="/admin/login"
+          element={
+            <React.Suspense fallback={<AdminLoadingFallback />}>
+              <AdminLoginPage />
+            </React.Suspense>
+          }
+        />
 
         {/* Protected Admin Suite Routes */}
         <Route
           path="/admin"
           element={
             <AdminRouteGuard>
-              <AdminLayout />
+              <React.Suspense fallback={<AdminLoadingFallback />}>
+                <AdminLayout />
+              </React.Suspense>
             </AdminRouteGuard>
           }
         >

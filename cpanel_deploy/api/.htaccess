@@ -1,0 +1,45 @@
+# Block access to sensitive system, database and environment files
+<FilesMatch "\.(sql|env|ini|log|sh|bak|git|json)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# Prevent directory listings
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Block direct access to internal PHP directories
+  RewriteRule ^(config|database|helpers|controllers)($|/) - [F,L]
+
+  # Allow direct access to uploaded files in uploads/
+  RewriteCond %{REQUEST_URI} ^/api/uploads/ [OR]
+  RewriteCond %{REQUEST_URI} ^/uploads/
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # Route all other API requests to index.php
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# API Security & Anti-Cache Headers
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</IfModule>
+
+# Turn off mod_expires for API responses
+<IfModule mod_expires.c>
+  ExpiresActive Off
+</IfModule>

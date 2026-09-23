@@ -35,7 +35,7 @@ export const Footer: React.FC = () => {
           {/* Column 2: 3 Journeys */}
           <div className="md:col-span-3 space-y-3">
             <h4 className="text-xs font-bold text-sky-400 uppercase tracking-wider">
-              মূল তিন সেবা
+              প্ল্যাটফর্মের সেবাসমূহ
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
@@ -55,12 +55,20 @@ export const Footer: React.FC = () => {
                   <span>বিনিয়োগ করুন</span>
                   <span className="text-xs text-slate-400 font-light">— মাছ সংগ্রহ তহবিল</span>
                 </Link>
-              </li>              <li>
+              </li>
+              <li>
                 <Link to="/blog" className="text-slate-300 hover:text-sky-400 transition-colors flex items-center gap-1.5">
                   <span>ব্লগ</span>
                   <span className="text-xs text-slate-400 font-light">— গল্প ও অন্তর্দৃষ্টি</span>
                 </Link>
-              </li>            </ul>
+              </li>
+              <li>
+                <Link to="/contact" className="text-slate-300 hover:text-sky-400 transition-colors flex items-center gap-1.5">
+                  <span>যোগাযোগ</span>
+                  <span className="text-xs text-slate-400 font-light">— হেড অফিস ও সহায়তা</span>
+                </Link>
+              </li>
+            </ul>
           </div>
 
           {/* Column 3: Contact & Fish Hubs */}

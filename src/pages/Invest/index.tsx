@@ -6,6 +6,7 @@ import { InvestmentOpportunity } from '../../types/investment';
 import { InvestmentCard } from '../../components/investment/InvestmentCard';
 import { formatTaka, toBanglaDigits, formatDays } from '../../utils/formatters';
 import { COMPANY_CONTACT } from '../../config/constants';
+import { Seo, SEO_SITE_URL } from '../../components/seo/Seo';
 import {
   ShieldCheck,
   TrendingUp,
@@ -18,14 +19,16 @@ import {
   Sparkles,
   PhoneCall,
   FileCheck2,
-  Coins
+  Coins,
+  AlertTriangle
 } from 'lucide-react';
+import { adminService } from '../../services/adminService';
 
 export const InvestPage: React.FC = () => {
   const [investments, setInvestments] = useState<InvestmentOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStatusFilter, setActiveStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('সব');
+  const [settings, setSettings] = useState(() => adminService.getSettings());
 
   // Interactive Calculator State
   const [calcAmount, setCalcAmount] = useState<number>(100000);
@@ -33,11 +36,37 @@ export const InvestPage: React.FC = () => {
   const [calcRate, setCalcRate] = useState<number>(8.5);
 
   useEffect(() => {
-    setLoading(true);
-    investmentService.getInvestments().then((res) => {
-      setInvestments(res);
-      setLoading(false);
-    });
+    adminService.fetchSettings().then((fresh) => {
+      if (fresh) setSettings(fresh);
+    }).catch(console.error);
+
+    const onSettingsUpdate = (e: any) => {
+      setSettings(e.detail || adminService.getSettings());
+    };
+    window.addEventListener('gangchill_settings_updated', onSettingsUpdate);
+    return () => window.removeEventListener('gangchill_settings_updated', onSettingsUpdate);
+  }, []);
+
+  useEffect(() => {
+    const refreshData = () => {
+      setLoading(true);
+      investmentService.getInvestments().then((res) => {
+        setInvestments(res);
+        setLoading(false);
+      }).catch(() => {
+        setLoading(false);
+      });
+    };
+
+    refreshData();
+
+    const onUpdate = () => refreshData();
+    window.addEventListener('gangchill_investments_updated', onUpdate);
+    window.addEventListener('focus', onUpdate);
+    return () => {
+      window.removeEventListener('gangchill_investments_updated', onUpdate);
+      window.removeEventListener('focus', onUpdate);
+    };
   }, []);
 
   // Filtered Investments
@@ -52,21 +81,41 @@ export const InvestPage: React.FC = () => {
         ? inv.status === 'open'
         : inv.status === 'closed' || inv.status === 'funded';
 
-    const matchesCategory =
-      activeCategoryFilter === 'সব' ? true : inv.category === activeCategoryFilter;
-
-    return matchesStatus && matchesCategory;
+    return matchesStatus;
   });
-
-  // Unique categories for filtering
-  const categories = ['সব', ...Array.from(new Set(investments.map((i) => i.category)))];
 
   // Calculated estimated returns
   const calculatedProfit = Math.round((calcAmount * calcRate) / 100);
   const calculatedTotal = calcAmount + calculatedProfit;
 
+  const investStructuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'মৎস্য প্রকল্পে বিনিয়োগ — Gangchill',
+      url: `${SEO_SITE_URL}/invest`,
+      description: 'বাংলাদেশের সম্ভাবনাময় মৎস্য সংগ্রহ ও কোল্ডচেইন লজিস্টিক্স প্রকল্পে যৌথ বিনিয়োগের সুযোগ।',
+      inLanguage: 'bn-BD',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'হোম', item: SEO_SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'বিনিয়োগ করুন', item: `${SEO_SITE_URL}/invest` },
+      ],
+    },
+  ];
+
   return (
     <div className="bg-gangchill-canvas text-gangchill-ink min-h-screen selection:bg-gangchill-blue/15 selection:text-gangchill-blue pb-20">
+      <Seo
+        title="মৎস্য প্রকল্পে বিনিয়োগ | Gangchill (গাংচিল)"
+        description="বাংলাদেশের সম্ভাবনাময় মৎস্য সংগ্রহ ও কোল্ডচেইন লজিস্টিক্স প্রকল্পে যৌথ বিনিয়োগের সুযোগ। স্বল্পমেয়াদি ও নিরাপদ তহবিল ব্যবস্থাপনা।"
+        path="/invest"
+        keywords={['মৎস্য বিনিয়োগ', 'মাছ সংগ্রহ তহবিল', 'হালাল বিনিয়োগ', 'স্বল্পমেয়াদী বিনিয়োগ', 'Gangchill']}
+        structuredData={investStructuredData}
+      />
       {/* 1. HERO SECTION: Masthead & Impact Stats Ribbon */}
       <section className="relative pt-12 sm:pt-16 pb-12 border-b border-gangchill-ink/10 overflow-hidden bg-gradient-to-b from-white/80 via-gangchill-canvas to-gangchill-canvas">
         <Container>
@@ -155,6 +204,25 @@ export const InvestPage: React.FC = () => {
       <section id="live-portfolio" className="py-12 sm:py-16">
         <Container>
           {/* Header & Filter Controls */}
+          {(!settings.allowPublicInvestorInterest || settings.maintenanceMode) && (
+            <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm text-amber-950 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 animate-pulse" />
+                <span>
+                  {settings.maintenanceMode
+                    ? 'প্ল্যাটফর্মের রক্ষণাবেক্ষণ (Maintenance Mode) চলছে। নতুন বিনিয়োগ আবেদন সাময়িকভাবে স্থগিত রয়েছে।'
+                    : 'বর্তমানে মৎস্য তহবিল প্রকল্পে নতুন বিনিয়োগ আবেদন সাময়িকভাবে বন্ধ রয়েছে। বিস্তারিত তথ্যের জন্য আমাদের হটলাইনে যোগাযোগ করুন।'}
+                </span>
+              </div>
+              <a
+                href={`tel:${settings.emergencyHotline || settings.supportPhone || '+8801712345678'}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-600 text-white hover:bg-amber-700 font-bold text-xs shrink-0 transition-all shadow-xs"
+              >
+                <span>হটলাইন: {settings.emergencyHotline || settings.supportPhone || '+880 1712-345678'}</span>
+              </a>
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gangchill-ink/10 mb-8">
             <div>
               <div className="text-xs font-bangla font-semibold tracking-wide text-gangchill-cyan mb-1">
@@ -203,26 +271,6 @@ export const InvestPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Species Category Filter Chips */}
-          {categories.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide text-xs">
-              <span className="text-gangchill-ink-muted font-mono shrink-0 mr-1">ক্যাটাগরি:</span>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategoryFilter(cat)}
-                  className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 ${
-                    activeCategoryFilter === cat
-                      ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white border-transparent font-semibold shadow-xs'
-                      : 'liquid-glass text-gangchill-ink/75 border-white/80 hover:border-gangchill-blue/40'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Cards Grid */}
           {loading ? (

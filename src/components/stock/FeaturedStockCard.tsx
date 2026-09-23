@@ -16,6 +16,7 @@ export const FeaturedStockCard: React.FC<FeaturedStockCardProps> = ({
   className = '',
 }) => {
   const isLive = stock.status === 'live';
+  const imageSrc = stock.images && stock.images.length > 0 && stock.images[0] ? stock.images[0] : '/hero-fishermen-boat.png';
 
   return (
     <Link
@@ -25,7 +26,7 @@ export const FeaturedStockCard: React.FC<FeaturedStockCardProps> = ({
       {/* Image */}
       <div className="relative h-44 sm:h-48 w-full shrink-0 overflow-hidden bg-gangchill-canvas">
         <img
-          src={stock.images[0]}
+          src={imageSrc}
           alt={stock.banglaName}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"

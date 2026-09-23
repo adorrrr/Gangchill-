@@ -22,6 +22,7 @@ export interface CorporateRequirement {
   contactPerson: string;
   phone: string;
   email?: string;
+  stockId?: string;
   productName: string;
   quantity: number;
   unit: string;
@@ -30,6 +31,8 @@ export interface CorporateRequirement {
   specification?: string;
   notes?: string;
   status?: 'pending' | 'reviewed';
+  quotedPricePerUnit?: number;
+  totalEstimatedValue?: number;
   createdAt?: string;
 }
 
@@ -42,6 +45,7 @@ export interface InvestorInterest {
   email?: string;
   interestedAmount: number;
   notes?: string;
+  status?: 'pending' | 'contacted' | 'reviewed' | 'approved' | 'rejected' | string;
   expectedProfit?: number;
   createdAt?: string;
 }

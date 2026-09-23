@@ -8,6 +8,7 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import { COMPANY_CONTACT } from '../../config/constants';
 import { normalizeBanglaToEnglishDigits } from '../../utils/formatters';
 import { submissionService } from '../../services/submissionService';
+import { Seo, SEO_SITE_URL } from '../../components/seo/Seo';
 
 export const ContactPage: React.FC = () => {
   const [name, setName] = useState('');
@@ -50,8 +51,34 @@ export const ContactPage: React.FC = () => {
     }
   };
 
+  const contactStructuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'ContactPage',
+      name: 'যোগাযোগ ও সহায়তা — Gangchill',
+      url: `${SEO_SITE_URL}/contact`,
+      description: 'গাংচিল হেড অফিস, পাইকারি মাছের বাল্ক চাহিদা ও যেকোনো সহায়তায় সরাসরি যোগাযোগ করুন।',
+      inLanguage: 'bn-BD',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'হোম', item: SEO_SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'যোগাযোগ', item: `${SEO_SITE_URL}/contact` },
+      ],
+    },
+  ];
+
   return (
     <div className="bg-gangchill-canvas text-gangchill-ink min-h-screen py-10 sm:py-16">
+      <Seo
+        title="যোগাযোগ ও অনুসন্ধান | Gangchill (গাংচিল)"
+        description="গাংচিল হেড অফিস, পাইকারি মাছের বাল্ক চাহিদা, সরবরাহ চুক্তি বা যেকোনো সহায়তায় আমাদের সেলস ও সাপোর্ট টিমের সাথে সরাসরি যোগাযোগ করুন।"
+        path="/contact"
+        keywords={['যোগাযোগ', 'গাংচিল অফিস', 'হোলসেল মাছ অর্ডার', 'কাস্টমার সাপোর্ট', 'Gangchill']}
+        structuredData={contactStructuredData}
+      />
       <Container size="md">
         <div className="border-b border-gangchill-ink/12 pb-6 mb-10 space-y-2">
           <div className="inline-flex items-center gap-2 text-xs font-bangla font-semibold text-gangchill-blue bg-gangchill-blue/10 px-3 py-1 rounded-full border border-gangchill-blue/20 tracking-wide">

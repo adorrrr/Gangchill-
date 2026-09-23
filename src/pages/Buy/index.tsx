@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { Container } from '../../components/common/Container';
 import { CorporateRequirementModal } from '../../components/forms/CorporateRequirementModal';
 import { stockService } from '../../services/stockService';
+import { adminService } from '../../services/adminService';
 import { WholesaleStockCard } from '../../components/stock/WholesaleStockCard';
 import { Stock, StockStatus } from '../../types/stock';
 import { toBanglaDigits } from '../../utils/formatters';
-import { ClipboardList, Sparkles } from 'lucide-react';
+import { Seo, SEO_SITE_URL } from '../../components/seo/Seo';
+import { ClipboardList, Sparkles, AlertTriangle, Phone, Lock } from 'lucide-react';
 
 export const BuyPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +20,21 @@ export const BuyPage: React.FC = () => {
   const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
   const [liveCount, setLiveCount] = useState<number>(0);
   const [upcomingCount, setUpcomingCount] = useState<number>(0);
+  const [platformSettings, setPlatformSettings] = useState(() => adminService.getSettings());
+
+  useEffect(() => {
+    const syncSettings = () => {
+      setPlatformSettings(adminService.getSettings());
+    };
+    window.addEventListener('gangchill_settings_updated', syncSettings);
+    window.addEventListener('storage', syncSettings);
+    return () => {
+      window.removeEventListener('gangchill_settings_updated', syncSettings);
+      window.removeEventListener('storage', syncSettings);
+    };
+  }, []);
+
+  const isMaintenanceMode = Boolean(platformSettings?.maintenanceMode);
 
   useEffect(() => {
     if (searchParams.get('action') === 'demand') {
@@ -27,19 +44,32 @@ export const BuyPage: React.FC = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
+  const loadStocksData = () => {
+    setLoading(true);
     stockService.getStocks().then((all) => {
       setLiveCount(all.filter((s) => s.status === 'live').length);
       setUpcomingCount(all.filter((s) => s.status === 'upcoming').length);
-    });
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    stockService.getStocks({ status: activeTab }).then((res) => {
-      setStocks(res);
+      const filtered = all.filter((s) => s.status === activeTab);
+      setStocks(filtered);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    loadStocksData();
+
+    const handleStockUpdate = () => {
+      loadStocksData();
+    };
+
+    window.addEventListener('gangchill_stocks_updated', handleStockUpdate);
+    window.addEventListener('focus', handleStockUpdate);
+    return () => {
+      window.removeEventListener('gangchill_stocks_updated', handleStockUpdate);
+      window.removeEventListener('focus', handleStockUpdate);
+    };
   }, [activeTab]);
 
   const handleTabChange = (tab: StockStatus) => {
@@ -51,8 +81,34 @@ export const BuyPage: React.FC = () => {
     setSearchParams(searchParams);
   };
 
+  const buyStructuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'পাইকারি মাছের লাইভ স্টক বোর্ড',
+      url: `${SEO_SITE_URL}/buy`,
+      description: 'উপকূলীয় ঘাট ও নদী থেকে সরাসরি সংগৃহীত তাজা মাছের পাইকারি লাইভ লট।',
+      inLanguage: 'bn-BD',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'হোম', item: SEO_SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'পাইকারি মাছ কিনুন', item: `${SEO_SITE_URL}/buy` },
+      ],
+    },
+  ];
+
   return (
     <div className="bg-gangchill-canvas text-gangchill-ink min-h-screen py-10 sm:py-16">
+      <Seo
+        title="পাইকারি মাছ কিনুন | Gangchill (গাংচিল)"
+        description="উপকূলীয় ঘাট ও নদী থেকে সরাসরি সংগৃহীত তাজা মাছের পাইকারি লাইভ লট। ইলিশ, রুই, কাতলা, পাবদা ও সামুদ্রিক মাছের দৈনিক পাইকারি রেট ও স্টক দেখুন।"
+        path="/buy"
+        keywords={['মাছ কিনুন', 'পাইকারি মাছের রেট', 'আজকের স্টক', 'ইলিশ', 'রুই', 'কাতলা', 'পাবদা', 'Gangchill']}
+        structuredData={buyStructuredData}
+      />
       <Container>
         {/* Wholesale Fish Stock Board Masthead */}
         <div className="border-b border-gangchill-ink/12 pb-6 mb-8">
@@ -123,17 +179,58 @@ export const BuyPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Small Top CTA: চাহিদা জানান → */}
+            {/* Small Top CTA: চাহিদা জানান → or Locked state */}
             <button
               type="button"
-              onClick={() => setIsRequirementModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold text-gangchill-blue bg-white/80 backdrop-blur-md hover:bg-gangchill-blue hover:text-white border border-gangchill-blue/30 transition-all duration-200 shadow-xs self-start sm:self-auto cursor-pointer group"
+              disabled={isMaintenanceMode}
+              onClick={() => {
+                if (!isMaintenanceMode) setIsRequirementModalOpen(true);
+              }}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 shadow-xs self-start sm:self-auto group ${
+                isMaintenanceMode
+                  ? 'bg-rose-600 hover:bg-rose-600 text-white border border-rose-700 cursor-not-allowed opacity-90'
+                  : 'text-gangchill-blue bg-white/80 backdrop-blur-md hover:bg-gangchill-blue hover:text-white border border-gangchill-blue/30 cursor-pointer'
+              }`}
             >
-              <ClipboardList className="w-3.5 h-3.5 text-gangchill-blue group-hover:text-white transition-colors" />
-              <span>চাহিদা জানান</span>
-              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+              {isMaintenanceMode ? (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-white" />
+                  <span>🔒 চাহিদা জানান — বর্তমানে বন্ধ</span>
+                  <span className="text-[10px] bg-rose-800/70 text-white px-1.5 py-0.5 rounded font-bold">লক</span>
+                </>
+              ) : (
+                <>
+                  <ClipboardList className="w-3.5 h-3.5 text-gangchill-blue group-hover:text-white transition-colors" />
+                  <span>চাহিদা জানান</span>
+                  <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                </>
+              )}
             </button>
           </div>
+
+          {/* In-page Maintenance Notice for Buyers */}
+          {isMaintenanceMode && (
+            <div className="mt-5 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-950 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fade-in">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                <div>
+                  <strong className="font-bold font-serifBangla text-rose-900 block sm:inline mr-1">
+                    ⚠️ রক্ষণাবেক্ষণ বিজ্ঞপ্তি:
+                  </strong>
+                  <span>
+                    {platformSettings?.maintenanceMessage || 'সাময়িক রক্ষণাবেক্ষণের জন্য আমাদের ক্রয়-বিক্রয় কার্যক্রম বর্তমানে বন্ধ রয়েছে। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।'}
+                  </span>
+                </div>
+              </div>
+              <a
+                href={`tel:${platformSettings?.emergencyHotline || platformSettings?.supportPhone || '+8801711234567'}`}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs shrink-0 transition-colors shadow-xs"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                <span>জরুরি কল: {platformSettings?.emergencyHotline || platformSettings?.supportPhone || '+880 1711-234567'}</span>
+              </a>
+            </div>
+          )}
         </div>
 
         {/* 3-Column Product Cards Grid (1 col mobile, 2 cols tablet, 3 cols desktop) */}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Camera, Image as ImageIcon, X } from 'lucide-react';
+import { apiClient } from '../../services/apiClient';
 
 interface ImageUploadMockProps {
   label?: string;
@@ -16,8 +17,18 @@ export const ImageUploadMock: React.FC<ImageUploadMockProps> = ({
 }) => {
   const [images, setImages] = useState<string[]>([]);
 
-  const compressImage = (file: File): Promise<string> => {
+  const processOrUploadImage = async (file: File): Promise<string> => {
+    try {
+      const res = await apiClient.upload(file);
+      if (res.success && res.data?.url) {
+        return res.data.url;
+      }
+    } catch {
+      // Fallback
+    }
+
     return new Promise((resolve) => {
+
       const reader = new FileReader();
       reader.onload = (readerEvent) => {
         const img = new Image();
@@ -51,8 +62,8 @@ export const ImageUploadMock: React.FC<ImageUploadMockProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const compressed = await compressImage(file);
-      const newImages = [...images, compressed].slice(0, maxImages);
+      const processed = await processOrUploadImage(file);
+      const newImages = [...images, processed].slice(0, maxImages);
       setImages(newImages);
       onImagesChange?.(newImages);
       e.target.value = '';

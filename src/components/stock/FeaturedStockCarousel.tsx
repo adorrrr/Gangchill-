@@ -81,7 +81,7 @@ export const FeaturedStockCarousel: React.FC<FeaturedStockCarouselProps> = ({
         onClick={() => scroll('left')}
         aria-label="আগের স্টক দেখুন"
         disabled={!canScrollLeft}
-        className={`absolute -left-4 top-[7rem] z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gangchill-ink/10 bg-white/95 text-gangchill-ink shadow-warm backdrop-blur-sm transition-all duration-300 ease-out hover:border-gangchill-green hover:text-gangchill-green disabled:pointer-events-none sm:flex ${
+        className={`absolute -left-4 top-[7rem] z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gangchill-ink/10 bg-white/95 text-gangchill-ink shadow-warm backdrop-blur-sm transition-all duration-300 ease-out hover:border-gangchill-blue hover:text-gangchill-blue disabled:pointer-events-none sm:flex ${
           canScrollLeft ? 'opacity-0 group-hover/carousel:opacity-100' : 'opacity-0'
         }`}
       >
@@ -104,7 +104,7 @@ export const FeaturedStockCarousel: React.FC<FeaturedStockCarouselProps> = ({
         onClick={() => scroll('right')}
         aria-label="পরবর্তী স্টক দেখুন"
         disabled={!canScrollRight}
-        className={`absolute -right-4 top-[7rem] z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gangchill-ink/10 bg-white/95 text-gangchill-ink shadow-warm backdrop-blur-sm transition-all duration-300 ease-out hover:border-gangchill-green hover:text-gangchill-green disabled:pointer-events-none sm:flex ${
+        className={`absolute -right-4 top-[7rem] z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gangchill-ink/10 bg-white/95 text-gangchill-ink shadow-warm backdrop-blur-sm transition-all duration-300 ease-out hover:border-gangchill-blue hover:text-gangchill-blue disabled:pointer-events-none sm:flex ${
           canScrollRight ? 'opacity-0 group-hover/carousel:opacity-100' : 'opacity-0'
         }`}
       >
